@@ -3,6 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:stockmate/app/providers/theme_provider.dart';
 import 'package:stockmate/app/router/app_routes.dart';
+import 'package:stockmate/features/categories/presentation/routes/category_routes.dart';
+import 'package:stockmate/features/products/presentation/routes/product_routes.dart';
+import 'package:stockmate/features/stock_transactions/presentation/routes/stock_transaction_routes.dart';
+import 'package:stockmate/features/suppliers/presentation/routes/supplier_routes.dart';
 
 abstract final class AppRouter {
   static final GoRouter router = GoRouter(
@@ -12,6 +16,10 @@ abstract final class AppRouter {
         path: AppRoutes.root,
         builder: (context, state) => const _AppPlaceholderPage(),
       ),
+      ...productRoutes,
+      ...categoryRoutes,
+      ...supplierRoutes,
+      ...stockTransactionRoutes,
     ],
     errorBuilder: (context, state) => _RouterErrorPage(error: state.error),
   );
