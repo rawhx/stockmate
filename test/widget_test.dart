@@ -55,7 +55,7 @@ void main() {
 
     await pumpApp(tester, repository);
 
-    expect(find.text('StockMate is ready'), findsOneWidget);
+    expect(find.text('Products'), findsOneWidget);
     expect(find.byTooltip('Sign out'), findsOneWidget);
   });
 
@@ -82,7 +82,7 @@ void main() {
     await tester.tap(find.byKey(const Key('login_submit')));
     await tester.pumpAndSettle();
 
-    expect(find.text('StockMate is ready'), findsOneWidget);
+    expect(find.text('Products'), findsOneWidget);
   });
 
   testWidgets('invalid login shows a friendly error and stays on login', (
@@ -177,7 +177,7 @@ void main() {
     await tester.tap(submit);
     await tester.pumpAndSettle();
 
-    expect(find.text('StockMate is ready'), findsOneWidget);
+    expect(find.text('Products'), findsOneWidget);
   });
 
   testWidgets('protected location redirects unauthenticated user to login', (
@@ -206,6 +206,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Welcome back'), findsOneWidget);
-    expect(find.text('StockMate is ready'), findsNothing);
+    expect(find.text('Products'), findsNothing);
   });
 }
