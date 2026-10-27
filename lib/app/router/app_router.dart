@@ -63,6 +63,17 @@ class _AppPlaceholderPage extends StatelessWidget {
                 'Tambahkan halaman feature kelompok melalui AppRouter.',
                 textAlign: TextAlign.center,
               ),
+              ButtonBar(
+                alignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      context.go(AppRoutes.suppliers);
+                    },
+                    child: const Text('Pemasok'),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
