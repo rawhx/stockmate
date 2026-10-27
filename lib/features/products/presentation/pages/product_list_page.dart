@@ -73,6 +73,12 @@ class _ProductListPageState extends State<ProductListPage> {
 
     return Scaffold(
       appBar: ProductListAppBar(showActions: widget.showAppActions),
+      floatingActionButton: FloatingActionButton.extended(
+        key: const Key('product_add'),
+        onPressed: () => context.push('/products/new'),
+        icon: const Icon(Icons.add),
+        label: const Text('Add product'),
+      ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: provider.fetchProducts,
