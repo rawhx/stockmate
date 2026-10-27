@@ -59,6 +59,21 @@ void main() {
     expect(find.byTooltip('Sign out'), findsOneWidget);
   });
 
+  testWidgets('selecting a product opens its detail page', (tester) async {
+    final repository = FakeAuthRepository(
+      currentUser: const AuthUser(id: 'user-id', email: 'user@example.com'),
+    );
+    addTearDown(repository.dispose);
+
+    await pumpApp(tester, repository);
+    await tester.tap(find.text('Beras Premium'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Product details'), findsOneWidget);
+    expect(find.text('Beras Premium'), findsOneWidget);
+    expect(find.text('Product information'), findsOneWidget);
+  });
+
   testWidgets('login validates required email and password', (tester) async {
     final repository = FakeAuthRepository();
     addTearDown(repository.dispose);

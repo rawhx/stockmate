@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:stockmate/features/products/domain/entities/product.dart';
 import 'package:stockmate/features/products/presentation/providers/product_provider.dart';
@@ -132,7 +133,12 @@ class _ProductListPageState extends State<ProductListPage> {
                   ),
                 )
               else
-                ProductCollection(products: visibleProducts),
+                ProductCollection(
+                  products: visibleProducts,
+                  onProductTap: (product) {
+                    context.push('/products/${product.id}');
+                  },
+                ),
             ],
           ),
         ),

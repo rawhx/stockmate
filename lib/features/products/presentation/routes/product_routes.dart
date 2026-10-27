@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 
+import '../pages/product_detail_page.dart';
 import '../pages/product_list_page.dart';
 
 final List<RouteBase> productRoutes = [
@@ -7,6 +8,12 @@ final List<RouteBase> productRoutes = [
     path: '/products',
     builder: (context, state) {
       return const ProductListPage();
+    },
+  ),
+  GoRoute(
+    path: '/products/:id',
+    builder: (context, state) {
+      return ProductDetailPage(productId: state.pathParameters['id']!);
     },
   ),
 ];

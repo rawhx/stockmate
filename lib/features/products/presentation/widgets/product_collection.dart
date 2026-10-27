@@ -3,9 +3,14 @@ import 'package:stockmate/features/products/domain/entities/product.dart';
 import 'package:stockmate/features/products/presentation/widgets/product_card.dart';
 
 class ProductCollection extends StatelessWidget {
-  const ProductCollection({required this.products, super.key});
+  const ProductCollection({
+    required this.products,
+    required this.onProductTap,
+    super.key,
+  });
 
   final List<Product> products;
+  final ValueChanged<Product> onProductTap;
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +26,11 @@ class ProductCollection extends StatelessWidget {
               itemCount: products.length,
               separatorBuilder: (_, _) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
-                return ProductCard(product: products[index]);
+                final product = products[index];
+                return ProductCard(
+                  product: product,
+                  onTap: () => onProductTap(product),
+                );
               },
             );
           }
@@ -36,7 +45,11 @@ class ProductCollection extends StatelessWidget {
               mainAxisExtent: 240,
             ),
             itemBuilder: (context, index) {
-              return ProductCard(product: products[index]);
+              final product = products[index];
+              return ProductCard(
+                product: product,
+                onTap: () => onProductTap(product),
+              );
             },
           );
         },
