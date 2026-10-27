@@ -18,6 +18,12 @@ final List<RouteBase> productRoutes = [
     },
   ),
   GoRoute(
+    path: '/products/:id/edit',
+    builder: (context, state) {
+      return ProductFormPage(productId: state.pathParameters['id']);
+    },
+  ),
+  GoRoute(
     path: '/products/:id',
     builder: (context, state) {
       return ProductDetailPage(productId: state.pathParameters['id']!);

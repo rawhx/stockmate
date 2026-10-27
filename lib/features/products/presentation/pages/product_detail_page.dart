@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:stockmate/features/products/domain/entities/product.dart';
 import 'package:stockmate/features/products/presentation/providers/product_provider.dart';
@@ -62,6 +63,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         title: const Text('Product details'),
         actions: [
           IconButton(
+            onPressed: _isLoading || _product == null ? null : _editProduct,
+            tooltip: 'Edit product',
+            icon: const Icon(Icons.edit_outlined),
+          ),
+          IconButton(
             onPressed: _isLoading ? null : _loadProduct,
             tooltip: 'Refresh product',
             icon: const Icon(Icons.refresh),
@@ -71,6 +77,13 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       ),
       body: SafeArea(child: _buildBody()),
     );
+  }
+
+  Future<void> _editProduct() async {
+    final product = _product;
+    if (product == null) return;
+    final updated = await context.push<bool>('/products/${product.id}/edit');
+    if (updated == true && mounted) await _loadProduct();
   }
 
   Widget _buildBody() {

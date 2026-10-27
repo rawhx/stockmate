@@ -89,6 +89,23 @@ void main() {
     expect(find.byKey(const Key('product_submit')), findsOneWidget);
   });
 
+  testWidgets('edit product action opens a prefilled form', (tester) async {
+    final repository = FakeAuthRepository(
+      currentUser: const AuthUser(id: 'user-id', email: 'user@example.com'),
+    );
+    addTearDown(repository.dispose);
+
+    await pumpApp(tester, repository);
+    await tester.tap(find.text('Beras Premium'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Edit product'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Edit product'), findsOneWidget);
+    expect(find.text('Update product details'), findsOneWidget);
+    expect(find.byKey(const Key('product_submit')), findsOneWidget);
+  });
+
   testWidgets('login validates required email and password', (tester) async {
     final repository = FakeAuthRepository();
     addTearDown(repository.dispose);
