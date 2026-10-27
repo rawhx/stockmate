@@ -277,18 +277,42 @@ Jika terjadi conflict:
 The repository currently requires the constraints recorded by its package
 configuration:
 
-- Flutter `>=3.29.0`
-- Dart `>=3.12.2 <4.0.0`
+- Flutter `>=3.47.0`
+- Dart `>=3.13.0 <4.0.0`
 
 Use a Flutter SDK release that satisfies both constraints.
 
 ## Setup
 
+Create a local environment file from the committed placeholder:
+
+```sh
+cp .env.example .env
+```
+
+Replace the placeholder values in `.env` with the project's Supabase URL and
+publishable key. The local `.env` file is ignored by Git. Never place a Supabase
+secret key or `service_role` key in this Flutter application.
+
+Install dependencies and verify the project:
+
 ```sh
 flutter pub get
 flutter analyze
 flutter test
-flutter run
 ```
 
-Choose an Android device or a web browser when running the application.
+Run Android with an available device:
+
+```sh
+flutter run --dart-define-from-file=.env
+```
+
+Run Web using Chrome:
+
+```sh
+flutter run -d chrome --dart-define-from-file=.env
+```
+
+The application reads these values at compile time through
+`String.fromEnvironment`; `.env` is not loaded directly at runtime.
