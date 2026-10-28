@@ -63,6 +63,12 @@ class _AppPlaceholderPage extends StatelessWidget {
                 'Tambahkan halaman feature kelompok melalui AppRouter.',
                 textAlign: TextAlign.center,
               ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () => context.push('/categories'),
+                icon: const Icon(Icons.category_outlined),
+                label: const Text('Buka Categories'),
+              ),
             ],
           ),
         ),

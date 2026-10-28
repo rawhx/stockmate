@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../domain/entities/category_entity.dart';
 import '../mock/category_products.dart';
+import '../widgets/product_image.dart';
 import '../providers/category_provider.dart';
 
 class CategoryListPage extends StatefulWidget {
@@ -92,7 +93,17 @@ class _CategoryListPageState extends State<CategoryListPage> {
         .toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Kategori Barang')),
+      appBar: AppBar(
+        title: const Text('Kategori Barang'),
+        actions: [
+          IconButton(
+            tooltip: 'Kelola kategori',
+            onPressed: () => setState(() => _isEditMode = !_isEditMode),
+            icon: Icon(_isEditMode ? Icons.check_rounded : Icons.tune_rounded),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -105,85 +116,93 @@ class _CategoryListPageState extends State<CategoryListPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            final isCompact = constraints.maxWidth < 400;
-
-                            final title = Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                        Card(
+                          color: Theme.of(context).colorScheme.primaryContainer,
+                          child: Padding(
+                            padding: const EdgeInsets.all(18),
+                            child: Row(
                               children: [
-                                Text(
-                                  'Manajemen Kategori',
-                                  style: Theme.of(
+                                CircleAvatar(
+                                  radius: 26,
+                                  backgroundColor: Theme.of(
                                     context,
-                                  ).textTheme.headlineSmall,
+                                  ).colorScheme.primary,
+                                  foregroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimary,
+                                  child: const Icon(Icons.category_rounded),
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${provider.categories.length} kategori tersedia',
-                                  style: Theme.of(context).textTheme.bodyMedium
-                                      ?.copyWith(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Manajemen Kategori',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleLarge
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                            ),
                                       ),
-                                ),
-                              ],
-                            );
-
-                            final actions = Wrap(
-                              spacing: 8,
-                              children: [
-                                OutlinedButton.icon(
-                                  onPressed: () => setState(
-                                    () => _isEditMode = !_isEditMode,
-                                  ),
-                                  icon: Icon(
-                                    _isEditMode
-                                        ? Icons.check
-                                        : Icons.edit_outlined,
-                                  ),
-                                  label: Text(
-                                    _isEditMode ? 'Selesai' : 'Kelola',
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Kelompokkan barang agar mudah ditemukan.',
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.bodyMedium,
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                FilledButton.icon(
+                                IconButton.filled(
+                                  tooltip: 'Tambah kategori',
                                   onPressed: widget.onAddCategory,
-                                  icon: const Icon(Icons.add),
-                                  label: const Text('Tambah'),
+                                  icon: const Icon(Icons.add_rounded),
                                 ),
                               ],
-                            );
-
-                            if (isCompact) {
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  title,
-                                  const SizedBox(height: 12),
-                                  actions,
-                                ],
-                              );
-                            }
-
-                            return Row(
-                              children: [
-                                Expanded(child: title),
-                                const SizedBox(width: 12),
-                                actions,
-                              ],
-                            );
-                          },
+                            ),
+                          ),
                         ),
-
-                        const SizedBox(height: 20),
-
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildSummaryCard(
+                                context,
+                                icon: Icons.folder_copy_outlined,
+                                label: 'Total kategori',
+                                value: '${provider.categories.length}',
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _buildSummaryCard(
+                                context,
+                                icon: Icons.account_tree_outlined,
+                                label: 'Subkategori',
+                                value:
+                                    '${provider.categories.where((item) => item.parentId != null).length}',
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
                         TextField(
                           onChanged: provider.setSearchQuery,
-                          decoration: const InputDecoration(
-                            hintText: 'Cari kategori...',
-                            prefixIcon: Icon(Icons.search),
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            hintText: 'Cari kategori atau subkategori',
+                            prefixIcon: const Icon(Icons.search_rounded),
+                            suffixIcon: provider.searchQuery.isNotEmpty
+                                ? IconButton(
+                                    tooltip: 'Hapus pencarian',
+                                    onPressed: () =>
+                                        provider.setSearchQuery(''),
+                                    icon: const Icon(Icons.close_rounded),
+                                  )
+                                : null,
                           ),
                         ),
 
@@ -237,6 +256,49 @@ class _CategoryListPageState extends State<CategoryListPage> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryCard(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        child: Row(
+          children: [
+            Icon(icon, color: colorScheme.primary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    value,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -353,7 +415,10 @@ class _CategoryListPageState extends State<CategoryListPage> {
                       left: isSubcategory ? 40 : 20,
                       right: 16,
                     ),
-                    leading: const Icon(Icons.inventory_2_outlined),
+                    leading: ProductImage(
+                      productName: product.name,
+                      imageUrl: product.imageUrl,
+                    ),
                     title: Text(product.name),
                     subtitle: Text(product.code),
                   ),

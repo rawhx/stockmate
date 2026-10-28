@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../domain/entities/category_entity.dart';
 import '../mock/category_products.dart';
 import '../providers/category_provider.dart';
+import '../widgets/product_image.dart';
 
 class CategoryDetailPage extends StatelessWidget {
   final String categoryId;
@@ -348,16 +349,9 @@ class CategoryDetailPage extends StatelessWidget {
                     for (final product in products)
                       Card(
                         child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.secondaryContainer,
-                            child: Icon(
-                              Icons.inventory_2_outlined,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSecondaryContainer,
-                            ),
+                          leading: ProductImage(
+                            productName: product.name,
+                            imageUrl: product.imageUrl,
                           ),
                           title: Text(product.name),
                           subtitle: Text(product.code),
