@@ -59,6 +59,30 @@ void main() {
     expect(find.byTooltip('Sign out'), findsOneWidget);
   });
 
+  testWidgets('categories action opens categories and returns to products', (
+    tester,
+  ) async {
+    final repository = FakeAuthRepository(
+      currentUser: const AuthUser(id: 'user-id', email: 'user@example.com'),
+    );
+    addTearDown(repository.dispose);
+
+    await pumpApp(tester, repository);
+    await tester.tap(find.byTooltip('Buka Categories'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Kategori Barang'), findsOneWidget);
+    expect(find.text('ATK'), findsOneWidget);
+    expect(find.text('Elektronik'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Products'), findsOneWidget);
+    expect(find.text('Beras Premium'), findsOneWidget);
+    expect(find.byTooltip('Sign out'), findsOneWidget);
+  });
+
   testWidgets('selecting a product opens its detail page', (tester) async {
     final repository = FakeAuthRepository(
       currentUser: const AuthUser(id: 'user-id', email: 'user@example.com'),
