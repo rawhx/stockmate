@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:stockmate/app/providers/theme_provider.dart';
+import 'package:stockmate/app/router/app_routes.dart';
 import 'package:stockmate/features/auth/presentation/providers/auth_provider.dart';
 
 class ProductListAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -31,6 +32,11 @@ class ProductListAppBar extends StatelessWidget implements PreferredSizeWidget {
                 onPressed: () => context.push('/categories'),
                 tooltip: 'Buka Categories',
                 icon: const Icon(Icons.category_outlined),
+              ),
+              IconButton(
+                onPressed: () => context.push(AppRoutes.suppliers),
+                tooltip: 'Pemasok',
+                icon: const Icon(Icons.store_outlined),
               ),
               IconButton(
                 onPressed: context.read<ThemeProvider>().toggleTheme,

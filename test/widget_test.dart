@@ -83,6 +83,36 @@ void main() {
     expect(find.byTooltip('Sign out'), findsOneWidget);
   });
 
+  testWidgets('suppliers action opens suppliers and returns to products', (
+    tester,
+  ) async {
+    final repository = FakeAuthRepository(
+      currentUser: const AuthUser(id: 'user-id', email: 'user@example.com'),
+    );
+    addTearDown(repository.dispose);
+
+    await pumpApp(tester, repository);
+    await tester.tap(find.byTooltip('Pemasok'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Suppliers'), findsOneWidget);
+    expect(find.text('PT Sumber Makmur'), findsOneWidget);
+
+    await tester.tap(find.text('Tambah Supplier'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TextFormField, 'Nama Supplier'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('Suppliers'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('Products'), findsOneWidget);
+    expect(find.byTooltip('Buka Categories'), findsOneWidget);
+    expect(find.byTooltip('Sign out'), findsOneWidget);
+  });
+
   testWidgets('selecting a product opens its detail page', (tester) async {
     final repository = FakeAuthRepository(
       currentUser: const AuthUser(id: 'user-id', email: 'user@example.com'),
@@ -258,12 +288,19 @@ void main() {
     addTearDown(repository.dispose);
 
     await pumpApp(tester, repository);
-    final context = tester.element(find.text('Welcome back'));
-    GoRouter.of(context).go('/products');
-    await tester.pumpAndSettle();
+    final router = GoRouter.of(tester.element(find.text('Welcome back')));
+    for (final location in [
+      '/products',
+      '/categories',
+      '/suppliers',
+      '/suppliers/form',
+    ]) {
+      router.go(location);
+      await tester.pumpAndSettle();
 
-    expect(find.text('Welcome back'), findsOneWidget);
-    expect(find.text('Halaman tidak ditemukan'), findsNothing);
+      expect(find.text('Welcome back'), findsOneWidget);
+      expect(find.text('Halaman tidak ditemukan'), findsNothing);
+    }
   });
 
   testWidgets('logout returns an authenticated user to login', (tester) async {
