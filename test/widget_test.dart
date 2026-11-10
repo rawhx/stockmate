@@ -55,8 +55,55 @@ void main() {
 
     await pumpApp(tester, repository);
 
-    expect(find.text('StockMate is ready'), findsOneWidget);
+    expect(find.text('Products'), findsOneWidget);
     expect(find.byTooltip('Sign out'), findsOneWidget);
+  });
+
+  testWidgets('selecting a product opens its detail page', (tester) async {
+    final repository = FakeAuthRepository(
+      currentUser: const AuthUser(id: 'user-id', email: 'user@example.com'),
+    );
+    addTearDown(repository.dispose);
+
+    await pumpApp(tester, repository);
+    await tester.tap(find.text('Beras Premium'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Product details'), findsOneWidget);
+    expect(find.text('Beras Premium'), findsOneWidget);
+    expect(find.text('Product information'), findsOneWidget);
+  });
+
+  testWidgets('add product action opens the create form', (tester) async {
+    final repository = FakeAuthRepository(
+      currentUser: const AuthUser(id: 'user-id', email: 'user@example.com'),
+    );
+    addTearDown(repository.dispose);
+
+    await pumpApp(tester, repository);
+    await tester.tap(find.byKey(const Key('product_add')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add product'), findsWidgets);
+    expect(find.text('Create a new product'), findsOneWidget);
+    expect(find.byKey(const Key('product_submit')), findsOneWidget);
+  });
+
+  testWidgets('edit product action opens a prefilled form', (tester) async {
+    final repository = FakeAuthRepository(
+      currentUser: const AuthUser(id: 'user-id', email: 'user@example.com'),
+    );
+    addTearDown(repository.dispose);
+
+    await pumpApp(tester, repository);
+    await tester.tap(find.text('Beras Premium'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Edit product'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Edit product'), findsOneWidget);
+    expect(find.text('Update product details'), findsOneWidget);
+    expect(find.byKey(const Key('product_submit')), findsOneWidget);
   });
 
   testWidgets('login validates required email and password', (tester) async {
@@ -82,7 +129,7 @@ void main() {
     await tester.tap(find.byKey(const Key('login_submit')));
     await tester.pumpAndSettle();
 
-    expect(find.text('StockMate is ready'), findsOneWidget);
+    expect(find.text('Products'), findsOneWidget);
   });
 
   testWidgets('invalid login shows a friendly error and stays on login', (
@@ -177,7 +224,7 @@ void main() {
     await tester.tap(submit);
     await tester.pumpAndSettle();
 
-    expect(find.text('StockMate is ready'), findsOneWidget);
+    expect(find.text('Products'), findsOneWidget);
   });
 
   testWidgets('protected location redirects unauthenticated user to login', (
@@ -206,6 +253,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Welcome back'), findsOneWidget);
-    expect(find.text('StockMate is ready'), findsNothing);
+    expect(find.text('Products'), findsNothing);
   });
 }
