@@ -39,6 +39,11 @@ class ProductListAppBar extends StatelessWidget implements PreferredSizeWidget {
                 icon: const Icon(Icons.store_outlined),
               ),
               IconButton(
+                onPressed: () => context.push(AppRoutes.stockTransactions),
+                tooltip: 'Transaksi Stok',
+                icon: const Icon(Icons.swap_horiz_outlined),
+              ),
+              IconButton(
                 onPressed: context.read<ThemeProvider>().toggleTheme,
                 tooltip: 'Change theme',
                 icon: const Icon(Icons.brightness_6_outlined),

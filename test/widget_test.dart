@@ -113,6 +113,27 @@ void main() {
     expect(find.byTooltip('Sign out'), findsOneWidget);
   });
 
+  testWidgets(
+    'stock transactions action opens stock transactions and returns to products',
+    (tester) async {
+      final repository = FakeAuthRepository(
+        currentUser: const AuthUser(id: 'user-id', email: 'user@example.com'),
+      );
+      addTearDown(repository.dispose);
+
+      await pumpApp(tester, repository);
+      await tester.tap(find.byTooltip('Transaksi Stok'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Manajemen Transaksi Stok'), findsOneWidget);
+      expect(find.byKey(const Key('add_transaction_fab')), findsOneWidget);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.text('Products'), findsOneWidget);
+    },
+  );
+
   testWidgets('selecting a product opens its detail page', (tester) async {
     final repository = FakeAuthRepository(
       currentUser: const AuthUser(id: 'user-id', email: 'user@example.com'),

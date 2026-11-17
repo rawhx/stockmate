@@ -18,13 +18,27 @@ import 'package:stockmate/features/products/domain/usecases/get_product.dart';
 import 'package:stockmate/features/products/domain/usecases/get_products.dart';
 import 'package:stockmate/features/products/domain/usecases/update_product.dart';
 import 'package:stockmate/features/products/presentation/providers/product_provider.dart';
+import 'package:stockmate/features/stock_transactions/data/datasources/stock_transaction_mock_data_source.dart';
+import 'package:stockmate/features/stock_transactions/data/repositories/stock_transaction_repository_impl.dart';
+import 'package:stockmate/features/stock_transactions/domain/usecases/create_stock_transaction.dart';
+import 'package:stockmate/features/stock_transactions/domain/usecases/delete_stock_transaction.dart';
+import 'package:stockmate/features/stock_transactions/domain/usecases/get_stock_transaction.dart';
+import 'package:stockmate/features/stock_transactions/domain/usecases/get_stock_transactions.dart';
+import 'package:stockmate/features/stock_transactions/domain/usecases/update_stock_transaction.dart';
+import 'package:stockmate/features/stock_transactions/presentation/providers/stock_transaction_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AppProviders extends StatelessWidget {
-  const AppProviders({required this.child, this.authRepository, super.key});
+  const AppProviders({
+    required this.child,
+    this.authRepository,
+    this.stockTransactionProvider,
+    super.key,
+  });
 
   final Widget child;
   final AuthRepository? authRepository;
+  final StockTransactionProvider? stockTransactionProvider;
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +75,34 @@ class AppProviders extends StatelessWidget {
               updateProduct: UpdateProduct(repository),
               deleteProduct: DeleteProduct(repository),
             );
+          },
+        ),
+        ChangeNotifierProxyProvider<ProductProvider, StockTransactionProvider>(
+          create: (context) {
+            if (stockTransactionProvider != null) {
+              return stockTransactionProvider!;
+            }
+            final ds = StockTransactionMockDataSource();
+            final repo = StockTransactionRepositoryImpl(ds);
+            final productProvider = context.read<ProductProvider>();
+            return StockTransactionProvider(
+              getStockTransactions: GetStockTransactions(repo),
+              getStockTransaction: GetStockTransaction(repo),
+              createStockTransaction: CreateStockTransaction(repo),
+              updateStockTransaction: UpdateStockTransaction(repo),
+              deleteStockTransaction: DeleteStockTransaction(repo),
+              onGetProduct: productProvider.getProductById,
+              onUpdateProduct: productProvider.editProduct,
+            );
+          },
+          update: (context, productProvider, currentStockTxProvider) {
+            if (currentStockTxProvider != null) {
+              currentStockTxProvider.onGetProduct =
+                  productProvider.getProductById;
+              currentStockTxProvider.onUpdateProduct =
+                  productProvider.editProduct;
+            }
+            return currentStockTxProvider!;
           },
         ),
       ],
