@@ -10,11 +10,13 @@ import 'package:stockmate/features/auth/domain/usecases/sign_out.dart';
 import 'package:stockmate/features/auth/domain/usecases/sign_up.dart';
 import 'package:stockmate/features/auth/domain/usecases/watch_auth_state.dart';
 import 'package:stockmate/features/auth/presentation/providers/auth_provider.dart';
-import 'package:stockmate/features/products/data/datasources/product_mock_data_source.dart';
+import 'package:stockmate/features/products/data/datasources/product_remote_data_source.dart';
 import 'package:stockmate/features/products/data/repositories/product_repository_impl.dart';
+import 'package:stockmate/features/products/domain/repositories/product_repository.dart';
 import 'package:stockmate/features/products/domain/usecases/create_product.dart';
 import 'package:stockmate/features/products/domain/usecases/delete_product.dart';
 import 'package:stockmate/features/products/domain/usecases/get_product.dart';
+import 'package:stockmate/features/products/domain/usecases/get_product_form_options.dart';
 import 'package:stockmate/features/products/domain/usecases/get_products.dart';
 import 'package:stockmate/features/products/domain/usecases/update_product.dart';
 import 'package:stockmate/features/products/presentation/providers/product_provider.dart';
@@ -32,16 +34,29 @@ class AppProviders extends StatelessWidget {
   const AppProviders({
     required this.child,
     this.authRepository,
+    this.productRepository,
     this.stockTransactionProvider,
     super.key,
   });
 
   final Widget child;
   final AuthRepository? authRepository;
+  final ProductRepository? productRepository;
   final StockTransactionProvider? stockTransactionProvider;
 
   @override
   Widget build(BuildContext context) {
+    final usesRemoteProducts =
+        productRepository == null ||
+        (productRepository is ProductRepositoryImpl &&
+            (productRepository as ProductRepositoryImpl).dataSource
+                is ProductRemoteDataSource);
+    Future<Never> blockMockStockMutation(String _) async {
+      throw StateError(
+        'Transaksi stok belum tersedia untuk inventori akun ini.',
+      );
+    }
+
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
@@ -65,17 +80,18 @@ class AppProviders extends StatelessWidget {
             );
           },
         ),
-        ChangeNotifierProvider(
-          create: (_) {
-            final repository = ProductRepositoryImpl(ProductMockDataSource());
-            return ProductProvider(
-              getProducts: GetProducts(repository),
-              getProduct: GetProduct(repository),
-              createProduct: CreateProduct(repository),
-              updateProduct: UpdateProduct(repository),
-              deleteProduct: DeleteProduct(repository),
-            );
-          },
+        Provider<ProductRepository>(
+          create: (_) =>
+              productRepository ??
+              ProductRepositoryImpl(
+                ProductRemoteDataSource(Supabase.instance.client),
+              ),
+        ),
+        ChangeNotifierProxyProvider<AuthProvider, ProductProvider>(
+          create: _createProductProvider,
+          update: (context, auth, previous) =>
+              (previous ?? _createProductProvider(context))
+                ..setOwner(auth.user?.id),
         ),
         ChangeNotifierProxyProvider<ProductProvider, StockTransactionProvider>(
           create: (context) {
@@ -91,14 +107,17 @@ class AppProviders extends StatelessWidget {
               createStockTransaction: CreateStockTransaction(repo),
               updateStockTransaction: UpdateStockTransaction(repo),
               deleteStockTransaction: DeleteStockTransaction(repo),
-              onGetProduct: productProvider.getProductById,
+              onGetProduct: usesRemoteProducts
+                  ? blockMockStockMutation
+                  : productProvider.getProductById,
               onUpdateProduct: productProvider.editProduct,
             );
           },
           update: (context, productProvider, currentStockTxProvider) {
             if (currentStockTxProvider != null) {
-              currentStockTxProvider.onGetProduct =
-                  productProvider.getProductById;
+              currentStockTxProvider.onGetProduct = usesRemoteProducts
+                  ? blockMockStockMutation
+                  : productProvider.getProductById;
               currentStockTxProvider.onUpdateProduct =
                   productProvider.editProduct;
             }
@@ -107,6 +126,18 @@ class AppProviders extends StatelessWidget {
         ),
       ],
       child: child,
+    );
+  }
+
+  ProductProvider _createProductProvider(BuildContext context) {
+    final repository = context.read<ProductRepository>();
+    return ProductProvider(
+      getProducts: GetProducts(repository),
+      getProduct: GetProduct(repository),
+      getFormOptions: GetProductFormOptions(repository),
+      createProduct: CreateProduct(repository),
+      updateProduct: UpdateProduct(repository),
+      deleteProduct: DeleteProduct(repository),
     );
   }
 }

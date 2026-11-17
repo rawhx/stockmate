@@ -1,6 +1,9 @@
 import '../entities/product.dart';
+import '../entities/product_form_options.dart';
 
 abstract interface class ProductRepository {
+  Future<ProductFormOptions> getFormOptions();
+
   Future<List<Product>> getProducts();
 
   Future<Product?> getProduct(String id);
