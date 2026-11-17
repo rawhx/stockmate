@@ -85,6 +85,18 @@ class _ProductListPageState extends State<ProductListPage> {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
+              if (provider.errorMessage != null && products.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: MaterialBanner(
+                    content: Text(provider.errorMessage!),
+                    actions: [
+                      TextButton(
+                        onPressed: provider.fetchProducts,
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                ),
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 sliver: SliverToBoxAdapter(
