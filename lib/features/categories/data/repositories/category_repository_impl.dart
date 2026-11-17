@@ -1,20 +1,20 @@
 import '../../domain/entities/category_entity.dart';
 import '../../domain/repositories/category_repository.dart';
-import '../datasources/category_mock_datasource.dart';
+import '../datasources/category_supabase_datasource.dart';
 import '../models/category_model.dart';
 
 class CategoryRepositoryImpl implements CategoryRepository {
-  final CategoryMockDataSource dataSource;
+  final CategorySupabaseDataSource dataSource;
 
   CategoryRepositoryImpl(this.dataSource);
 
   @override
-  Future<List<CategoryEntity>> getCategories() {
+  Future<List<CategoryEntity>> getCategories() async {
     return dataSource.getCategories();
   }
 
   @override
-  Future<CategoryEntity?> getCategoryById(String id) {
+  Future<CategoryEntity?> getCategoryById(String id) async {
     return dataSource.getCategoryById(id);
   }
 
@@ -31,13 +31,13 @@ class CategoryRepositoryImpl implements CategoryRepository {
   }
 
   @override
-  Future<void> addCategory(CategoryEntity category) {
-    return dataSource.addCategory(_toModel(category));
+  Future<void> addCategory(CategoryEntity category) async {
+    await dataSource.addCategory(_toModel(category));
   }
 
   @override
-  Future<void> updateCategory(CategoryEntity category) {
-    return dataSource.updateCategory(_toModel(category));
+  Future<void> updateCategory(CategoryEntity category) async {
+    await dataSource.updateCategory(_toModel(category));
   }
 
   @override

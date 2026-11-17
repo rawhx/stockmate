@@ -6,12 +6,14 @@ import '../providers/category_provider.dart';
 
 class CategoryFormPage extends StatefulWidget {
   final String? categoryId;
+  final String? parentId;
   final VoidCallback onSaved;
   final VoidCallback onCancel;
 
   const CategoryFormPage({
     super.key,
     this.categoryId,
+    this.parentId,
     required this.onSaved,
     required this.onCancel,
   });
@@ -38,6 +40,7 @@ class _CategoryFormPageState extends State<CategoryFormPage> {
 
     if (_initialized) return;
     _initialized = true;
+    _parentId = widget.parentId;
 
     if (isEditMode) {
       final categories = context.read<CategoryProvider>().categories;
@@ -91,10 +94,12 @@ class _CategoryFormPageState extends State<CategoryFormPage> {
       );
     } else {
       category = CategoryEntity(
-        id: 'CAT-${now.microsecondsSinceEpoch}',
-        ownerId: 'dummy-user',
+        id: '',
+        ownerId: '',
         name: _nameController.text.trim(),
-        description: _descriptionController.text.trim(),
+        description: _descriptionController.text.trim().isEmpty
+            ? null
+            : _descriptionController.text.trim(),
         parentId: _parentId,
         createdAt: now,
         updatedAt: now,
@@ -122,15 +127,6 @@ class _CategoryFormPageState extends State<CategoryFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final categories = context.watch<CategoryProvider>().categories;
-
-    final parentOptions = categories
-        .where(
-          (category) =>
-              category.id != widget.categoryId && category.parentId == null,
-        )
-        .toList();
-
     if (isEditMode && _originalCategory == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Edit Kategori')),
@@ -194,7 +190,7 @@ class _CategoryFormPageState extends State<CategoryFormPage> {
                                 const SizedBox(height: 6),
                                 Text(
                                   isEditMode
-                                      ? 'Ubah nama, deskripsi, atau kategori utamanya.'
+                                      ? 'Ubah nama dan deskripsi kategori.'
                                       : 'Kelompokkan produk agar lebih mudah ditemukan dan dikelola.',
                                   style: Theme.of(context).textTheme.bodyMedium
                                       ?.copyWith(
@@ -252,40 +248,6 @@ class _CategoryFormPageState extends State<CategoryFormPage> {
                               alignLabelWithHint: true,
                               prefixIcon: Icon(Icons.notes_outlined),
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          DropdownButtonFormField<String>(
-                            initialValue: _parentId ?? '',
-                            isExpanded: true,
-                            decoration: const InputDecoration(
-                              labelText: 'Kategori utama (opsional)',
-                              helperText:
-                                  'Pilih kategori utama jika ini subkategori.',
-                              prefixIcon: Icon(Icons.account_tree_outlined),
-                            ),
-                            items: [
-                              const DropdownMenuItem<String>(
-                                value: '',
-                                child: Text('Jadikan kategori utama'),
-                              ),
-                              ...parentOptions.map(
-                                (category) => DropdownMenuItem<String>(
-                                  value: category.id,
-                                  child: Text(
-                                    category.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ),
-                            ],
-                            onChanged: (value) {
-                              setState(() {
-                                _parentId = value == null || value.isEmpty
-                                    ? null
-                                    : value;
-                              });
-                            },
                           ),
                         ],
                       ),

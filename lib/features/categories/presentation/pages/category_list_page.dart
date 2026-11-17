@@ -76,19 +76,13 @@ class _CategoryListPageState extends State<CategoryListPage> {
   Widget build(BuildContext context) {
     final provider = context.watch<CategoryProvider>();
     final categories = provider.categories;
-    final visibleCategories = provider.filteredCategories;
-    final matchingIds = visibleCategories
-        .map((category) => category.id)
-        .toSet();
+    final query = provider.searchQuery.trim().toLowerCase();
 
     final rootCategories = categories
         .where(
           (category) =>
               category.parentId == null &&
-              (matchingIds.contains(category.id) ||
-                  visibleCategories.any(
-                    (child) => child.parentId == category.id,
-                  )),
+              (query.isEmpty || category.name.toLowerCase().contains(query)),
         )
         .toList();
 
@@ -174,17 +168,8 @@ class _CategoryListPageState extends State<CategoryListPage> {
                                 context,
                                 icon: Icons.folder_copy_outlined,
                                 label: 'Total kategori',
-                                value: '${provider.categories.length}',
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: _buildSummaryCard(
-                                context,
-                                icon: Icons.account_tree_outlined,
-                                label: 'Subkategori',
                                 value:
-                                    '${provider.categories.where((item) => item.parentId != null).length}',
+                                    '${provider.categories.where((item) => item.parentId == null).length}',
                               ),
                             ),
                           ],
@@ -193,7 +178,7 @@ class _CategoryListPageState extends State<CategoryListPage> {
                         TextField(
                           onChanged: provider.setSearchQuery,
                           decoration: InputDecoration(
-                            hintText: 'Cari kategori atau subkategori',
+                            hintText: 'Cari kategori',
                             prefixIcon: const Icon(Icons.search_rounded),
                             suffixIcon: provider.searchQuery.isNotEmpty
                                 ? IconButton(
@@ -227,21 +212,10 @@ class _CategoryListPageState extends State<CategoryListPage> {
                       ),
                     ),
                   )
-                else if (visibleCategories.isEmpty)
-                  SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: Center(
-                      child: Text(
-                        provider.searchQuery.isEmpty
-                            ? 'Belum ada kategori'
-                            : 'Kategori tidak ditemukan',
-                      ),
-                    ),
-                  )
                 else if (rootCategories.isEmpty)
                   const SliverFillRemaining(
                     hasScrollBody: false,
-                    child: Center(child: Text('Kategori tidak ditemukan')),
+                    child: Center(child: Text('Belum ada kategori')),
                   )
                 else
                   SliverPadding(
@@ -249,7 +223,7 @@ class _CategoryListPageState extends State<CategoryListPage> {
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
                         for (final category in rootCategories)
-                          _buildCategoryGroup(category),
+                          _buildCategoryTile(category),
                       ]),
                     ),
                   ),
@@ -304,33 +278,7 @@ class _CategoryListPageState extends State<CategoryListPage> {
     );
   }
 
-  Widget _buildCategoryGroup(CategoryEntity category) {
-    final provider = context.read<CategoryProvider>();
-    final allChildren = provider.categories
-        .where((item) => item.parentId == category.id)
-        .toList();
-    final query = provider.searchQuery.trim().toLowerCase();
-    final children =
-        query.isEmpty || category.name.toLowerCase().contains(query)
-        ? allChildren
-        : allChildren
-              .where((item) => item.name.toLowerCase().contains(query))
-              .toList();
-
-    return _buildCategoryTile(
-      category,
-      isSubcategory: false,
-      subcategories: children,
-      initiallyExpanded: query.isNotEmpty,
-    );
-  }
-
-  Widget _buildCategoryTile(
-    CategoryEntity category, {
-    required bool isSubcategory,
-    List<CategoryEntity> subcategories = const [],
-    bool initiallyExpanded = false,
-  }) {
+  Widget _buildCategoryTile(CategoryEntity category) {
     final productStore = CategoryProductMockStore.instance;
 
     return ListenableBuilder(
@@ -345,24 +293,14 @@ class _CategoryListPageState extends State<CategoryListPage> {
               radius: 18,
               backgroundColor: Theme.of(context).colorScheme.primaryContainer,
               foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
-              child: Icon(
-                isSubcategory
-                    ? Icons.subdirectory_arrow_right
-                    : Icons.folder_outlined,
-                size: 19,
-              ),
+              child: const Icon(Icons.folder_outlined, size: 19),
             ),
             title: Text(
               category.name,
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
-            subtitle: Text(
-              isSubcategory
-                  ? 'Subkategori | ${products.length} produk'
-                  : '${subcategories.length} subkategori | ${products.length} produk',
-            ),
-            initiallyExpanded:
-                _expandedCategories[category.id] ?? initiallyExpanded,
+            subtitle: Text('${products.length} produk'),
+            initiallyExpanded: _expandedCategories[category.id] ?? false,
             onExpansionChanged: (expanded) {
               setState(() => _expandedCategories[category.id] = expanded);
             },
@@ -398,23 +336,10 @@ class _CategoryListPageState extends State<CategoryListPage> {
               ],
             ),
             children: [
-              // Subkategori berada di bagian atas isi kategori utama.
-              for (final subcategory in subcategories)
-                Padding(
-                  padding: const EdgeInsets.only(left: 20, right: 8),
-                  child: _buildCategoryTile(
-                    subcategory,
-                    isSubcategory: true,
-                    initiallyExpanded: initiallyExpanded,
-                  ),
-                ),
               if (products.isNotEmpty)
                 for (final product in products)
                   ListTile(
-                    contentPadding: EdgeInsets.only(
-                      left: isSubcategory ? 40 : 20,
-                      right: 16,
-                    ),
+                    contentPadding: const EdgeInsets.only(left: 20, right: 16),
                     leading: ProductImage(
                       productName: product.name,
                       imageUrl: product.imageUrl,
@@ -422,7 +347,7 @@ class _CategoryListPageState extends State<CategoryListPage> {
                     title: Text(product.name),
                     subtitle: Text(product.code),
                   ),
-              if (products.isEmpty && subcategories.isEmpty)
+              if (products.isEmpty)
                 const ListTile(
                   leading: Icon(Icons.inventory_2_outlined),
                   title: Text('Belum ada produk pada kategori ini.'),

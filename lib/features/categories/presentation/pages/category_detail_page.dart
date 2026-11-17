@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../domain/entities/category_entity.dart';
-import '../mock/category_products.dart';
+import '../../../products/domain/entities/product.dart';
+import '../../../products/presentation/providers/product_provider.dart';
 import '../providers/category_provider.dart';
 import '../widgets/product_image.dart';
 
@@ -10,6 +11,7 @@ class CategoryDetailPage extends StatelessWidget {
   final String categoryId;
   final VoidCallback onEdit;
   final VoidCallback onBack;
+  final VoidCallback onAddSubcategory;
   final ValueChanged<String> onOpenSubcategory;
 
   const CategoryDetailPage({
@@ -17,114 +19,121 @@ class CategoryDetailPage extends StatelessWidget {
     required this.categoryId,
     required this.onEdit,
     required this.onBack,
+    required this.onAddSubcategory,
     required this.onOpenSubcategory,
   });
 
-  Future<void> _showAddProduct(
+  Future<void> _showSelectProduct(
     BuildContext context, {
     required String targetCategoryId,
     required String targetCategoryName,
   }) async {
-    final formKey = GlobalKey<FormState>();
-    final nameController = TextEditingController();
-    final codeController = TextEditingController();
-    final priceController = TextEditingController();
+    final productProvider = context.read<ProductProvider>();
+    await productProvider.fetchProducts();
 
-    try {
-      final product = await showDialog<CategoryProduct>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: Text('Tambah Produk ke $targetCategoryName'),
-          content: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: nameController,
-                    autofocus: true,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: const InputDecoration(
-                      labelText: 'Nama produk',
-                      prefixIcon: Icon(Icons.inventory_2_outlined),
+    if (!context.mounted) return;
+
+    final selectedProduct = await showDialog<Product>(
+      context: context,
+      builder: (dialogContext) {
+        var query = '';
+        Product? selected;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final products = productProvider.products.where((product) {
+              final normalizedQuery = query.trim().toLowerCase();
+              return normalizedQuery.isEmpty ||
+                  product.name.toLowerCase().contains(normalizedQuery) ||
+                  product.code.toLowerCase().contains(normalizedQuery);
+            }).toList();
+
+            return AlertDialog(
+              title: Text('Pilih Produk untuk $targetCategoryName'),
+              content: SizedBox(
+                width: 500,
+                height: 420,
+                child: Column(
+                  children: [
+                    TextField(
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        hintText: 'Cari produk atau kode',
+                        prefixIcon: Icon(Icons.search),
+                      ),
+                      onChanged: (value) => setDialogState(() => query = value),
                     ),
-                    validator: (value) => value == null || value.trim().isEmpty
-                        ? 'Nama produk wajib diisi'
-                        : null,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: codeController,
-                    textCapitalization: TextCapitalization.characters,
-                    decoration: const InputDecoration(
-                      labelText: 'Kode produk',
-                      prefixIcon: Icon(Icons.qr_code_2_outlined),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: products.isEmpty
+                          ? const Center(
+                              child: Text('Produk tidak ditemukan.'),
+                            )
+                          : ListView.builder(
+                              itemCount: products.length,
+                              itemBuilder: (context, index) {
+                                final product = products[index];
+                                final currentCategory =
+                                    product.categoryName.trim().isEmpty
+                                    ? 'Belum memiliki kategori'
+                                    : product.categoryName;
+
+                                return RadioListTile<Product>(
+                                  value: product,
+                                  groupValue: selected,
+                                  onChanged: (value) => setDialogState(
+                                    () => selected = value,
+                                  ),
+                                  title: Text(product.name),
+                                  subtitle: Text(
+                                    '${product.code} • Saat ini: $currentCategory',
+                                  ),
+                                );
+                              },
+                            ),
                     ),
-                    validator: (value) => value == null || value.trim().isEmpty
-                        ? 'Kode produk wajib diisi'
-                        : null,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: priceController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Harga',
-                      prefixText: 'Rp ',
-                      prefixIcon: Icon(Icons.payments_outlined),
-                    ),
-                    validator: (value) {
-                      final price = double.tryParse(
-                        (value ?? '').trim().replaceAll(',', '.'),
-                      );
-                      if (price == null || price <= 0) {
-                        return 'Masukkan harga lebih dari 0';
-                      }
-                      return null;
-                    },
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Batal'),
-            ),
-            FilledButton.icon(
-              onPressed: () {
-                if (!formKey.currentState!.validate()) return;
-                Navigator.pop(
-                  dialogContext,
-                  CategoryProduct(
-                    code: codeController.text.trim(),
-                    name: nameController.text.trim(),
-                    price: double.parse(
-                      priceController.text.trim().replaceAll(',', '.'),
-                    ),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Tambah'),
-            ),
-          ],
-        ),
-      );
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Batal'),
+                ),
+                FilledButton.icon(
+                  onPressed: selected == null
+                      ? null
+                      : () => Navigator.pop(dialogContext, selected),
+                  icon: const Icon(Icons.link),
+                  label: const Text('Tambahkan'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
 
-      if (product == null || !context.mounted) return;
-      CategoryProductMockStore.instance.addProduct(targetCategoryId, product);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Produk berhasil ditambahkan')),
-      );
-    } finally {
-      nameController.dispose();
-      codeController.dispose();
-      priceController.dispose();
+    if (selectedProduct == null || !context.mounted) return;
+
+    final updatedProduct = selectedProduct.copyWith(
+      categoryId: targetCategoryId,
+      categoryName: targetCategoryName,
+    );
+    final success = await productProvider.editProduct(updatedProduct);
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Produk berhasil ditambahkan ke kategori'
+              : productProvider.errorMessage ?? 'Gagal menambahkan produk',
+        ),
+      ),
+    );
+  }
     }
   }
 
@@ -218,9 +227,22 @@ class CategoryDetailPage extends StatelessWidget {
           onPressed: onBack,
         ),
         title: const Text('Detail Kategori'),
+        actions: [
+          IconButton(
+            tooltip: 'Edit kategori',
+            onPressed: onEdit,
+            icon: const Icon(Icons.edit_outlined),
+          ),
+          IconButton(
+            tooltip: 'Hapus kategori',
+            onPressed: () => _deleteCategory(context, provider),
+            icon: const Icon(Icons.delete_outline),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddProduct(
+        onPressed: () => _showSelectProduct(
           context,
           targetCategoryId: selectedCategory.id,
           targetCategoryName: selectedCategory.name,
@@ -231,12 +253,14 @@ class CategoryDetailPage extends StatelessWidget {
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 650),
-          child: ListenableBuilder(
-            listenable: CategoryProductMockStore.instance,
+           child: ListenableBuilder(
+             listenable: context.watch<ProductProvider>(),
             builder: (context, _) {
-              final products = CategoryProductMockStore.instance.productsFor(
-                selectedCategory.id,
-              );
+               final products = context
+                   .watch<ProductProvider>()
+                   .products
+                   .where((product) => product.categoryId == categoryId)
+                   .toList();
 
               return ListView(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 96),
@@ -294,12 +318,30 @@ class CategoryDetailPage extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (subcategories.isNotEmpty) ...[
-                    const SizedBox(height: 24),
-                    Text(
-                      'Subkategori',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Subkategori',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: onAddSubcategory,
+                        icon: const Icon(Icons.add),
+                        label: const Text('Tambah'),
+                      ),
+                    ],
+                  ),
+                  if (subcategories.isEmpty)
+                    const Card(
+                      child: ListTile(
+                        leading: Icon(Icons.account_tree_outlined),
+                        title: Text('Belum ada subkategori.'),
+                      ),
+                    )
+                  else ...[
                     const SizedBox(height: 8),
                     for (final subcategory in subcategories)
                       _buildSubcategoryTile(context, subcategory),
@@ -361,31 +403,6 @@ class CategoryDetailPage extends StatelessWidget {
                           ),
                         ),
                       ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: onEdit,
-                          icon: const Icon(Icons.edit_outlined),
-                          label: const Text('Edit'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _deleteCategory(context, provider),
-                          icon: const Icon(Icons.delete_outline),
-                          label: const Text('Hapus'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Theme.of(
-                              context,
-                            ).colorScheme.error,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               );
             },
@@ -403,8 +420,11 @@ class CategoryDetailPage extends StatelessWidget {
 
     return StatefulBuilder(
       builder: (tileContext, setTileState) {
-        final subcategoryProducts = CategoryProductMockStore.instance
-            .productsFor(subcategory.id);
+        final subcategoryProducts = context
+            .watch<ProductProvider>()
+            .products
+            .where((product) => product.categoryId == subcategory.id)
+            .toList();
 
         return Card(
           clipBehavior: Clip.antiAlias,
@@ -451,7 +471,7 @@ class CategoryDetailPage extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.only(left: 48, bottom: 8),
                   child: TextButton.icon(
-                    onPressed: () => _showAddProduct(
+                    onPressed: () => _showSelectProduct(
                       context,
                       targetCategoryId: subcategory.id,
                       targetCategoryName: subcategory.name,

@@ -1,7 +1,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../data/datasources/category_mock_datasource.dart';
+import '../../data/datasources/category_supabase_datasource.dart';
 import '../../data/repositories/category_repository_impl.dart';
 
 import '../../domain/usecases/get_categories.dart';
@@ -15,9 +15,11 @@ import '../pages/category_list_page.dart';
 import '../pages/category_detail_page.dart';
 import '../pages/category_form_page.dart';
 
-// Satu sumber dummy dan satu Provider untuk seluruh
-// navigasi fitur Categories.
-final CategoryMockDataSource _dataSource = CategoryMockDataSource();
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+final CategorySupabaseDataSource _dataSource = CategorySupabaseDataSource(
+  Supabase.instance.client,
+);
 
 final CategoryRepositoryImpl _repository = CategoryRepositoryImpl(_dataSource);
 
@@ -27,7 +29,7 @@ final CategoryProvider _categoryProvider = CategoryProvider(
   addCategory: AddCategory(_repository),
   updateCategory: UpdateCategory(_repository),
   deleteCategory: DeleteCategory(_repository),
-)..loadCategories();
+);
 
 // Routes milik fitur Categories.
 
@@ -49,11 +51,18 @@ final List<RouteBase> categoryRoutes = [
   GoRoute(
     path: '/categories/new',
     builder: (context, state) {
+      final parentId = state.uri.queryParameters['parentId'];
+
       return ChangeNotifierProvider<CategoryProvider>.value(
         value: _categoryProvider,
         child: CategoryFormPage(
-          onSaved: () => context.go('/categories'),
-          onCancel: () => context.go('/categories'),
+          parentId: parentId,
+          onSaved: () => parentId == null
+              ? context.go('/categories')
+              : context.go('/categories/$parentId'),
+          onCancel: () => parentId == null
+              ? context.go('/categories')
+              : context.go('/categories/$parentId'),
         ),
       );
     },
@@ -68,6 +77,7 @@ final List<RouteBase> categoryRoutes = [
         value: _categoryProvider,
         child: CategoryDetailPage(
           categoryId: id,
+          onAddSubcategory: () => context.push('/categories/new?parentId=$id'),
           onEdit: () => context.push('/categories/$id/edit'),
           onBack: () {
             if (context.canPop()) {
