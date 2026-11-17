@@ -66,9 +66,7 @@ class CategoryDetailPage extends StatelessWidget {
                     const SizedBox(height: 12),
                     Expanded(
                       child: products.isEmpty
-                          ? const Center(
-                              child: Text('Produk tidak ditemukan.'),
-                            )
+                          ? const Center(child: Text('Produk tidak ditemukan.'))
                           : ListView.builder(
                               itemCount: products.length,
                               itemBuilder: (context, index) {
@@ -81,9 +79,8 @@ class CategoryDetailPage extends StatelessWidget {
                                 return RadioListTile<Product>(
                                   value: product,
                                   groupValue: selected,
-                                  onChanged: (value) => setDialogState(
-                                    () => selected = value,
-                                  ),
+                                  onChanged: (value) =>
+                                      setDialogState(() => selected = value),
                                   title: Text(product.name),
                                   subtitle: Text(
                                     '${product.code} • Saat ini: $currentCategory',
@@ -133,8 +130,6 @@ class CategoryDetailPage extends StatelessWidget {
         ),
       ),
     );
-  }
-    }
   }
 
   Future<void> _deleteCategory(
@@ -253,14 +248,14 @@ class CategoryDetailPage extends StatelessWidget {
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 650),
-           child: ListenableBuilder(
-             listenable: context.watch<ProductProvider>(),
+          child: ListenableBuilder(
+            listenable: context.watch<ProductProvider>(),
             builder: (context, _) {
-               final products = context
-                   .watch<ProductProvider>()
-                   .products
-                   .where((product) => product.categoryId == categoryId)
-                   .toList();
+              final products = context
+                  .watch<ProductProvider>()
+                  .products
+                  .where((product) => product.categoryId == categoryId)
+                  .toList();
 
               return ListView(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 96),
@@ -391,10 +386,7 @@ class CategoryDetailPage extends StatelessWidget {
                     for (final product in products)
                       Card(
                         child: ListTile(
-                          leading: ProductImage(
-                            productName: product.name,
-                            imageUrl: product.imageUrl,
-                          ),
+                          leading: ProductImage(productName: product.name),
                           title: Text(product.name),
                           subtitle: Text(product.code),
                           trailing: Text(
