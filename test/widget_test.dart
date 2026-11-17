@@ -12,6 +12,13 @@ import 'package:stockmate/features/auth/domain/errors/auth_failure.dart';
 
 import 'helpers/fake_auth_repository.dart';
 
+class _RestrictedProductSource extends ProductMockDataSource {
+  @override
+  Future<void> deleteProduct(String id) async {
+    throw StateError('Product has stock transactions.');
+  }
+}
+
 void main() {
   Future<void> pumpApp(
     WidgetTester tester,
@@ -235,6 +242,30 @@ void main() {
       expect(find.text('Product deleted.'), findsOneWidget);
     },
   );
+
+  testWidgets('restricted delete displays error and keeps product details', (
+    tester,
+  ) async {
+    final repository = FakeAuthRepository(
+      currentUser: const AuthUser(id: 'user-id', email: 'user@example.com'),
+    );
+    addTearDown(repository.dispose);
+    await pumpApp(
+      tester,
+      repository,
+      products: ProductRepositoryImpl(_RestrictedProductSource()),
+    );
+    await tester.tap(find.text('Beras Premium'));
+    await tester.pumpAndSettle();
+    final button = find.byKey(const Key('product_delete'));
+    await tester.ensureVisible(button);
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+    expect(find.text('Product details'), findsOneWidget);
+    expect(find.text('Product has stock transactions.'), findsOneWidget);
+  });
 
   testWidgets('successful login opens the protected root page', (tester) async {
     const user = AuthUser(id: 'user-id', email: 'user@example.com');
