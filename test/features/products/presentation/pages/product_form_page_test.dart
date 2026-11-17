@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:stockmate/features/products/data/datasources/product_mock_data_source.dart';
 import 'package:stockmate/features/products/data/datasources/product_data_source.dart';
 import 'package:stockmate/features/products/data/repositories/product_repository_impl.dart';
+import 'package:stockmate/features/products/domain/entities/product_form_options.dart';
 import 'package:stockmate/features/products/domain/usecases/create_product.dart';
 import 'package:stockmate/features/products/domain/usecases/delete_product.dart';
 import 'package:stockmate/features/products/domain/usecases/get_product.dart';
@@ -13,6 +14,12 @@ import 'package:stockmate/features/products/domain/usecases/get_products.dart';
 import 'package:stockmate/features/products/domain/usecases/update_product.dart';
 import 'package:stockmate/features/products/presentation/pages/product_form_page.dart';
 import 'package:stockmate/features/products/presentation/providers/product_provider.dart';
+
+class _NoCategoriesSource extends ProductMockDataSource {
+  @override
+  Future<ProductFormOptions> getFormOptions() async =>
+      const ProductFormOptions(categories: [], suppliers: []);
+}
 
 void main() {
   ProductProvider createProvider([ProductDataSource? dataSource]) {
@@ -143,6 +150,52 @@ void main() {
     );
     expect(updated.name, 'Beras Organik');
     expect(updated.currentStock, 25);
+  });
+
+  testWidgets(
+    'supplier can be cleared while category uses a selected identifier',
+    (tester) async {
+      final setup = await pumpForm(tester, productId: '1');
+      await selectOption(tester, 'product_category', 'Beverage');
+      await selectOption(tester, 'product_supplier', 'No supplier');
+      await tapSubmit(tester);
+      final updated = setup.provider.products.firstWhere(
+        (product) => product.id == '1',
+      );
+      expect(updated.categoryId, 'cat-2');
+      expect(updated.supplierId, isNull);
+      expect(updated.supplierName, isNull);
+      expect(updated.currentStock, 25);
+    },
+  );
+
+  testWidgets(
+    'current stock is read-only and defaults to zero for new products',
+    (tester) async {
+      await pumpForm(tester);
+      final field = tester.widget<TextField>(
+        find.descendant(
+          of: find.byKey(const Key('product_current_stock')),
+          matching: find.byType(TextField),
+        ),
+      );
+      expect(field.readOnly, isTrue);
+      expect(field.controller!.text, '0');
+    },
+  );
+
+  testWidgets('account without categories cannot submit a product', (
+    tester,
+  ) async {
+    await pumpForm(tester, dataSource: _NoCategoriesSource());
+    final submit = tester.widget<FilledButton>(
+      find.byKey(const Key('product_submit')),
+    );
+    expect(submit.onPressed, isNull);
+    expect(
+      find.text('No categories available for this account.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('validates required fields before creating a product', (
