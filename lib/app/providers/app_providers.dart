@@ -15,6 +15,7 @@ import 'package:stockmate/features/products/data/repositories/product_repository
 import 'package:stockmate/features/products/domain/usecases/create_product.dart';
 import 'package:stockmate/features/products/domain/usecases/delete_product.dart';
 import 'package:stockmate/features/products/domain/usecases/get_product.dart';
+import 'package:stockmate/features/products/domain/usecases/get_product_form_options.dart';
 import 'package:stockmate/features/products/domain/usecases/get_products.dart';
 import 'package:stockmate/features/products/domain/usecases/update_product.dart';
 import 'package:stockmate/features/products/presentation/providers/product_provider.dart';
@@ -71,6 +72,7 @@ class AppProviders extends StatelessWidget {
             return ProductProvider(
               getProducts: GetProducts(repository),
               getProduct: GetProduct(repository),
+              getFormOptions: GetProductFormOptions(repository),
               createProduct: CreateProduct(repository),
               updateProduct: UpdateProduct(repository),
               deleteProduct: DeleteProduct(repository),

@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 
 import '../../domain/entities/product.dart';
+import '../../domain/entities/product_form_options.dart';
 import '../../domain/usecases/create_product.dart';
 import '../../domain/usecases/delete_product.dart';
 import '../../domain/usecases/get_product.dart';
+import '../../domain/usecases/get_product_form_options.dart';
 import '../../domain/usecases/get_products.dart';
 import '../../domain/usecases/update_product.dart';
 
@@ -11,6 +13,7 @@ class ProductProvider extends ChangeNotifier {
   factory ProductProvider({
     required GetProducts getProducts,
     required GetProduct getProduct,
+    required GetProductFormOptions getFormOptions,
     required CreateProduct createProduct,
     required UpdateProduct updateProduct,
     required DeleteProduct deleteProduct,
@@ -18,6 +21,7 @@ class ProductProvider extends ChangeNotifier {
     return ProductProvider._(
       getProducts,
       getProduct,
+      getFormOptions,
       createProduct,
       updateProduct,
       deleteProduct,
@@ -27,6 +31,7 @@ class ProductProvider extends ChangeNotifier {
   ProductProvider._(
     this._getProducts,
     this._getProduct,
+    this._getFormOptions,
     this._createProduct,
     this._updateProduct,
     this._deleteProduct,
@@ -34,6 +39,7 @@ class ProductProvider extends ChangeNotifier {
 
   final GetProducts _getProducts;
   final GetProduct _getProduct;
+  final GetProductFormOptions _getFormOptions;
   final CreateProduct _createProduct;
   final UpdateProduct _updateProduct;
   final DeleteProduct _deleteProduct;
@@ -64,6 +70,8 @@ class ProductProvider extends ChangeNotifier {
   Future<Product?> getProductById(String id) {
     return _getProduct(id);
   }
+
+  Future<ProductFormOptions> getFormOptions() => _getFormOptions();
 
   Future<bool> addProduct(Product product) async {
     try {
