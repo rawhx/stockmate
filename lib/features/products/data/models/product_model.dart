@@ -30,4 +30,24 @@ class ProductModel extends Product {
       currentStock: product.currentStock,
     );
   }
+
+  factory ProductModel.fromJson(
+    Map<String, dynamic> json, {
+    required String categoryName,
+    String? supplierName,
+  }) {
+    return ProductModel(
+      id: json['id'] as String,
+      code: json['code'] as String,
+      name: json['name'] as String,
+      price: (json['price'] as num).toDouble(),
+      unit: json['unit'] as String,
+      categoryId: json['category_id'] as String,
+      categoryName: categoryName,
+      supplierId: json['supplier_id'] as String?,
+      supplierName: supplierName,
+      minimumStock: (json['minimum_stock'] as num).toInt(),
+      currentStock: (json['current_stock'] as num).toInt(),
+    );
+  }
 }
