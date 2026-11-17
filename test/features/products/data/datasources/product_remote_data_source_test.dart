@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:stockmate/features/products/data/datasources/product_remote_data_source.dart';
+import 'package:stockmate/features/products/data/models/product_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 const _owner = '11111111-1111-4111-8111-111111111111';
@@ -28,6 +29,12 @@ Map<String, dynamic> _row({
   'minimum_stock': 10,
   'current_stock': stock,
 };
+
+ProductModel _product({int stock = 0, String? supplierId}) =>
+    ProductModel.fromJson(
+      _row(stock: stock, supplierId: supplierId),
+      categoryName: 'Food',
+    );
 
 http.Response _json(Object body, [int status = 200]) => http.Response(
   jsonEncode(body),
@@ -197,5 +204,68 @@ void main() {
     final options = await source.getFormOptions();
     expect(options.categories.single.id, _category);
     expect(options.suppliers.single.id, _supplier);
+  });
+
+  test(
+    'insert sends only writable columns and explicit account ownership',
+    () async {
+      await source.createProduct(_product());
+      final request = requests.singleWhere(
+        (request) => request.method == 'POST',
+      );
+      final body = jsonDecode(request.body) as Map<String, dynamic>;
+      expect(request.url.path, '/rest/v1/products');
+      expect(body['owner_id'], _owner);
+      expect(body['category_id'], _category);
+      expect(body['supplier_id'], isNull);
+      for (final column in [
+        'id',
+        'current_stock',
+        'category_name',
+        'supplier_name',
+        'ownerId',
+      ]) {
+        expect(body.containsKey(column), isFalse);
+      }
+    },
+  );
+
+  test('rejects nonzero initial stock before making any request', () async {
+    await expectLater(
+      source.createProduct(_product(stock: 5)),
+      throwsStateError,
+    );
+    expect(requests, isEmpty);
+  });
+
+  test(
+    'rejects references unavailable to the current account before writing',
+    () async {
+      handler = (request) => _rows(request, []);
+      await expectLater(source.createProduct(_product()), throwsStateError);
+      expect(requests.any((request) => request.method == 'POST'), isFalse);
+    },
+  );
+
+  test('duplicate product code is reported clearly', () async {
+    final previous = handler;
+    handler = (request) => request.method == 'POST'
+        ? _json({
+            'code': '23505',
+            'message': 'duplicate key',
+            'details': null,
+            'hint': null,
+          }, 409)
+        : previous(request);
+    await expectLater(
+      source.createProduct(_product()),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          contains('Kode produk'),
+        ),
+      ),
+    );
   });
 }
