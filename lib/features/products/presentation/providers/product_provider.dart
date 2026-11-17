@@ -46,6 +46,7 @@ class ProductProvider extends ChangeNotifier {
 
   List<Product> _products = [];
   bool _isLoading = false;
+  bool _isSaving = false;
   bool _disposed = false;
   int _generation = 0;
   String? _ownerId;
@@ -55,6 +56,7 @@ class ProductProvider extends ChangeNotifier {
 
   List<Product> get products => List.unmodifiable(_products);
   bool get isLoading => _isLoading;
+  bool get isSaving => _isSaving;
   String? get errorMessage => _errorMessage;
 
   // Invalidate outstanding requests as well as visible data across accounts.
@@ -67,6 +69,7 @@ class ProductProvider extends ChangeNotifier {
     _errorMessage = null;
     _pendingFetch = null;
     _isLoading = false;
+    _isSaving = false;
     _notify();
     if (ownerId != null) {
       final generation = _generation;
@@ -120,39 +123,43 @@ class ProductProvider extends ChangeNotifier {
     return options;
   }
 
-  Future<bool> addProduct(Product product) async {
-    try {
-      await _createProduct(product);
-      await fetchProducts();
-      return true;
-    } catch (error) {
-      _errorMessage = error.toString();
-      notifyListeners();
-      return false;
-    }
-  }
-
-  Future<bool> editProduct(Product product) async {
-    try {
-      await _updateProduct(product);
-      await fetchProducts();
-      return true;
-    } catch (error) {
-      _errorMessage = error.toString();
-      notifyListeners();
-      return false;
-    }
-  }
-
-  Future<bool> removeProduct(String id) async {
-    try {
+  Future<bool> addProduct(Product product) =>
+      _mutate(() => _createProduct(product));
+  Future<bool> editProduct(Product product) =>
+      _mutate(() => _updateProduct(product));
+  Future<bool> removeProduct(String id) {
+    final generation = _generation;
+    return _mutate(() async {
       await _deleteProduct(id);
+      if (_isCurrent(generation)) {
+        _products = _products.where((product) => product.id != id).toList();
+      }
+    });
+  }
+
+  Future<bool> _mutate(Future<void> Function() action) async {
+    if (_isSaving || _disposed) return false;
+    final generation = _generation;
+    _isSaving = true;
+    _errorMessage = null;
+    _notify();
+    try {
+      await action();
+      if (!_isCurrent(generation)) return false;
+      final pending = _pendingFetch;
+      if (pending != null) await pending;
+      if (!_isCurrent(generation)) return false;
+      // A read failure after a committed write must not invite a duplicate save.
       await fetchProducts();
-      return true;
+      return _isCurrent(generation);
     } catch (error) {
-      _errorMessage = error.toString();
-      notifyListeners();
+      if (_isCurrent(generation)) _errorMessage = _message(error);
       return false;
+    } finally {
+      if (_isCurrent(generation)) {
+        _isSaving = false;
+        _notify();
+      }
     }
   }
 
