@@ -3,19 +3,35 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:stockmate/app/app.dart';
 import 'package:stockmate/app/providers/app_providers.dart';
+import 'package:stockmate/features/products/data/datasources/product_mock_data_source.dart';
+import 'package:stockmate/features/products/data/repositories/product_repository_impl.dart';
+import 'package:stockmate/features/products/domain/repositories/product_repository.dart';
 import 'package:stockmate/features/auth/domain/entities/auth_user.dart';
 import 'package:stockmate/features/auth/domain/entities/sign_up_result.dart';
 import 'package:stockmate/features/auth/domain/errors/auth_failure.dart';
 
 import 'helpers/fake_auth_repository.dart';
 
+class _RestrictedProductSource extends ProductMockDataSource {
+  @override
+  Future<void> deleteProduct(String id) async {
+    throw StateError('Product has stock transactions.');
+  }
+}
+
 void main() {
   Future<void> pumpApp(
     WidgetTester tester,
-    FakeAuthRepository repository,
-  ) async {
+    FakeAuthRepository repository, {
+    ProductRepository? products,
+  }) async {
     await tester.pumpWidget(
-      AppProviders(authRepository: repository, child: const StockMateApp()),
+      AppProviders(
+        authRepository: repository,
+        productRepository:
+            products ?? ProductRepositoryImpl(ProductMockDataSource()),
+        child: const StockMateApp(),
+      ),
     );
     await tester.pumpAndSettle();
   }
@@ -55,8 +71,130 @@ void main() {
 
     await pumpApp(tester, repository);
 
-    expect(find.text('StockMate is ready'), findsOneWidget);
+    expect(find.text('Products'), findsOneWidget);
     expect(find.byTooltip('Sign out'), findsOneWidget);
+  });
+
+  testWidgets('categories action opens categories and returns to products', (
+    tester,
+  ) async {
+    final repository = FakeAuthRepository(
+      currentUser: const AuthUser(id: 'user-id', email: 'user@example.com'),
+    );
+    addTearDown(repository.dispose);
+
+    await pumpApp(tester, repository);
+    await tester.tap(find.byTooltip('Buka Categories'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Kategori Barang'), findsOneWidget);
+    expect(find.text('ATK'), findsOneWidget);
+    expect(find.text('Elektronik'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Products'), findsOneWidget);
+    expect(find.text('Beras Premium'), findsOneWidget);
+    expect(find.byTooltip('Sign out'), findsOneWidget);
+  });
+
+  testWidgets('suppliers action opens suppliers and returns to products', (
+    tester,
+  ) async {
+    final repository = FakeAuthRepository(
+      currentUser: const AuthUser(id: 'user-id', email: 'user@example.com'),
+    );
+    addTearDown(repository.dispose);
+
+    await pumpApp(tester, repository);
+    await tester.tap(find.byTooltip('Pemasok'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Suppliers'), findsOneWidget);
+    expect(find.text('PT Sumber Makmur'), findsOneWidget);
+
+    await tester.tap(find.text('Tambah Supplier'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TextFormField, 'Nama Supplier'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('Suppliers'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('Products'), findsOneWidget);
+    expect(find.byTooltip('Buka Categories'), findsOneWidget);
+    expect(find.byTooltip('Sign out'), findsOneWidget);
+  });
+
+  testWidgets(
+    'stock transactions action opens stock transactions and returns to products',
+    (tester) async {
+      final repository = FakeAuthRepository(
+        currentUser: const AuthUser(id: 'user-id', email: 'user@example.com'),
+      );
+      addTearDown(repository.dispose);
+
+      await pumpApp(tester, repository);
+      await tester.tap(find.byTooltip('Transaksi Stok'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Manajemen Transaksi Stok'), findsOneWidget);
+      expect(find.byKey(const Key('add_transaction_fab')), findsOneWidget);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.text('Products'), findsOneWidget);
+    },
+  );
+
+  testWidgets('selecting a product opens its detail page', (tester) async {
+    final repository = FakeAuthRepository(
+      currentUser: const AuthUser(id: 'user-id', email: 'user@example.com'),
+    );
+    addTearDown(repository.dispose);
+
+    await pumpApp(tester, repository);
+    await tester.tap(find.text('Beras Premium'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Product details'), findsOneWidget);
+    expect(find.text('Beras Premium'), findsOneWidget);
+    expect(find.text('Product information'), findsOneWidget);
+  });
+
+  testWidgets('add product action opens the create form', (tester) async {
+    final repository = FakeAuthRepository(
+      currentUser: const AuthUser(id: 'user-id', email: 'user@example.com'),
+    );
+    addTearDown(repository.dispose);
+
+    await pumpApp(tester, repository);
+    await tester.tap(find.byKey(const Key('product_add')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add product'), findsWidgets);
+    expect(find.text('Create a new product'), findsOneWidget);
+    expect(find.byKey(const Key('product_submit')), findsOneWidget);
+  });
+
+  testWidgets('edit product action opens a prefilled form', (tester) async {
+    final repository = FakeAuthRepository(
+      currentUser: const AuthUser(id: 'user-id', email: 'user@example.com'),
+    );
+    addTearDown(repository.dispose);
+
+    await pumpApp(tester, repository);
+    await tester.tap(find.text('Beras Premium'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Edit product'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Edit product'), findsOneWidget);
+    expect(find.text('Update product details'), findsOneWidget);
+    expect(find.byKey(const Key('product_submit')), findsOneWidget);
   });
 
   testWidgets('login validates required email and password', (tester) async {
@@ -71,6 +209,93 @@ void main() {
     expect(find.text('Password is required.'), findsOneWidget);
   });
 
+  testWidgets(
+    'deleting a product requires confirmation and returns to the list',
+    (tester) async {
+      final repository = FakeAuthRepository(
+        currentUser: const AuthUser(id: 'user-id', email: 'user@example.com'),
+      );
+      addTearDown(repository.dispose);
+      await pumpApp(tester, repository);
+      await tester.tap(find.text('Beras Premium'));
+      await tester.pumpAndSettle();
+      final button = find.byKey(const Key('product_delete'));
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.text('Product details'), findsOneWidget);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Products'),
+        findsOneWidget,
+        reason: tester
+            .widgetList<Text>(find.byType(Text))
+            .map((text) => text.data)
+            .join(' | '),
+      );
+      expect(find.text('Beras Premium'), findsNothing);
+      expect(find.text('Product deleted.'), findsOneWidget);
+    },
+  );
+
+  testWidgets('restricted delete displays error and keeps product details', (
+    tester,
+  ) async {
+    final repository = FakeAuthRepository(
+      currentUser: const AuthUser(id: 'user-id', email: 'user@example.com'),
+    );
+    addTearDown(repository.dispose);
+    await pumpApp(
+      tester,
+      repository,
+      products: ProductRepositoryImpl(_RestrictedProductSource()),
+    );
+    await tester.tap(find.text('Beras Premium'));
+    await tester.pumpAndSettle();
+    final button = find.byKey(const Key('product_delete'));
+    await tester.ensureVisible(button);
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+    expect(find.text('Product details'), findsOneWidget);
+    expect(find.text('Product has stock transactions.'), findsOneWidget);
+  });
+
+  testWidgets('switching accounts closes the previous product form', (
+    tester,
+  ) async {
+    final repository = FakeAuthRepository(
+      currentUser: const AuthUser(id: 'account-a', email: 'a@example.com'),
+    );
+    addTearDown(repository.dispose);
+    await pumpApp(tester, repository);
+    await tester.tap(find.text('Beras Premium'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Edit product'));
+    await tester.pumpAndSettle();
+    expect(find.text('Edit product'), findsOneWidget);
+
+    repository.emitAuthState(
+      const AuthUser(id: 'account-b', email: 'b@example.com'),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Products'),
+      findsOneWidget,
+      reason: tester
+          .widgetList<Text>(find.byType(Text))
+          .map((text) => text.data)
+          .join(' | '),
+    );
+    expect(find.text('Edit product'), findsNothing);
+  });
+
   testWidgets('successful login opens the protected root page', (tester) async {
     const user = AuthUser(id: 'user-id', email: 'user@example.com');
     final repository = FakeAuthRepository()..signInResult = user;
@@ -82,7 +307,7 @@ void main() {
     await tester.tap(find.byKey(const Key('login_submit')));
     await tester.pumpAndSettle();
 
-    expect(find.text('StockMate is ready'), findsOneWidget);
+    expect(find.text('Products'), findsOneWidget);
   });
 
   testWidgets('invalid login shows a friendly error and stays on login', (
@@ -177,7 +402,7 @@ void main() {
     await tester.tap(submit);
     await tester.pumpAndSettle();
 
-    expect(find.text('StockMate is ready'), findsOneWidget);
+    expect(find.text('Products'), findsOneWidget);
   });
 
   testWidgets('protected location redirects unauthenticated user to login', (
@@ -187,12 +412,19 @@ void main() {
     addTearDown(repository.dispose);
 
     await pumpApp(tester, repository);
-    final context = tester.element(find.text('Welcome back'));
-    GoRouter.of(context).go('/products');
-    await tester.pumpAndSettle();
+    final router = GoRouter.of(tester.element(find.text('Welcome back')));
+    for (final location in [
+      '/products',
+      '/categories',
+      '/suppliers',
+      '/suppliers/form',
+    ]) {
+      router.go(location);
+      await tester.pumpAndSettle();
 
-    expect(find.text('Welcome back'), findsOneWidget);
-    expect(find.text('Halaman tidak ditemukan'), findsNothing);
+      expect(find.text('Welcome back'), findsOneWidget);
+      expect(find.text('Halaman tidak ditemukan'), findsNothing);
+    }
   });
 
   testWidgets('logout returns an authenticated user to login', (tester) async {
@@ -206,6 +438,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Welcome back'), findsOneWidget);
-    expect(find.text('StockMate is ready'), findsNothing);
+    expect(find.text('Products'), findsNothing);
   });
 }
