@@ -6,18 +6,9 @@ import 'package:stockmate/app/router/app_routes.dart';
 import 'package:stockmate/features/auth/presentation/providers/auth_provider.dart';
 
 class ProductListAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const ProductListAppBar({
-    required this.showActions,
-    this.title = 'Products',
-    this.subtitle = 'Manage your inventory',
-    this.additionalActions = const [],
-    super.key,
-  });
+  const ProductListAppBar({required this.showActions, super.key});
 
   final bool showActions;
-  final String title;
-  final String subtitle;
-  final List<Widget> additionalActions;
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -25,19 +16,18 @@ class ProductListAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      title: Column(
+      title: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title),
+          Text('Products'),
           Text(
-            subtitle,
+            'Manage your inventory',
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
           ),
         ],
       ),
       actions: showActions
           ? [
-              ...additionalActions,
               IconButton(
                 onPressed: () => context.push('/categories'),
                 tooltip: 'Buka Categories',

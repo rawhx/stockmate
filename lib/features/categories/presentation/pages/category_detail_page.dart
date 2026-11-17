@@ -66,26 +66,28 @@ class CategoryDetailPage extends StatelessWidget {
                     Expanded(
                       child: products.isEmpty
                           ? const Center(child: Text('Produk tidak ditemukan.'))
-                          : ListView.builder(
-                              itemCount: products.length,
-                              itemBuilder: (context, index) {
-                                final product = products[index];
-                                final currentCategory =
-                                    product.categoryName.trim().isEmpty
-                                    ? 'Belum memiliki kategori'
-                                    : product.categoryName;
+                          : RadioGroup<Product>(
+                              groupValue: selected,
+                              onChanged: (value) =>
+                                  setDialogState(() => selected = value),
+                              child: ListView.builder(
+                                itemCount: products.length,
+                                itemBuilder: (context, index) {
+                                  final product = products[index];
+                                  final currentCategory =
+                                      product.categoryName.trim().isEmpty
+                                      ? 'Belum memiliki kategori'
+                                      : product.categoryName;
 
-                                return RadioListTile<Product>(
-                                  value: product,
-                                  groupValue: selected,
-                                  onChanged: (value) =>
-                                      setDialogState(() => selected = value),
-                                  title: Text(product.name),
-                                  subtitle: Text(
-                                    '${product.code} • Saat ini: $currentCategory',
-                                  ),
-                                );
-                              },
+                                  return RadioListTile<Product>(
+                                    value: product,
+                                    title: Text(product.name),
+                                    subtitle: Text(
+                                      '${product.code} • Saat ini: $currentCategory',
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
                     ),
                   ],
@@ -265,12 +267,12 @@ class CategoryDetailPage extends StatelessWidget {
                         children: [
                           CircleAvatar(
                             radius: 24,
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.primaryContainer,
-                            foregroundColor: Theme.of(
-                              context,
-                            ).colorScheme.onPrimaryContainer,
+                            backgroundColor: Theme.of(context)
+                                .colorScheme
+                                .primaryContainer,
+                            foregroundColor: Theme.of(context)
+                                .colorScheme
+                                .onPrimaryContainer,
                             child: const Icon(Icons.folder_outlined),
                           ),
                           const SizedBox(width: 14),

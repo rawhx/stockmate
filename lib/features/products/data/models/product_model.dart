@@ -15,22 +15,6 @@ class ProductModel extends Product {
     required super.currentStock,
   });
 
-  factory ProductModel.fromMap(Map<String, dynamic> map) {
-    return ProductModel(
-      id: map['id'] as String,
-      code: map['code'] as String,
-      name: map['name'] as String,
-      price: (map['price'] as num).toDouble(),
-      unit: map['unit'] as String,
-      categoryId: map['category_id'] as String,
-      categoryName: _relationName(map['categories']),
-      supplierId: map['supplier_id'] as String?,
-      supplierName: _relationName(map['suppliers']),
-      minimumStock: (map['minimum_stock'] as num?)?.toInt() ?? 0,
-      currentStock: (map['current_stock'] as num?)?.toInt() ?? 0,
-    );
-  }
-
   factory ProductModel.fromEntity(Product product) {
     return ProductModel(
       id: product.id,
@@ -46,17 +30,4 @@ class ProductModel extends Product {
       currentStock: product.currentStock,
     );
   }
-}
-
-String _relationName(dynamic relation) {
-  if (relation is Map<String, dynamic>) {
-    return relation['name'] as String? ?? '';
-  }
-  if (relation is List && relation.isNotEmpty) {
-    final first = relation.first;
-    if (first is Map<String, dynamic>) {
-      return first['name'] as String? ?? '';
-    }
-  }
-  return '';
 }
