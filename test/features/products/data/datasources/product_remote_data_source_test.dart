@@ -337,4 +337,43 @@ void main() {
       ),
     );
   });
+
+  test(
+    'all operations reject a signed-out session without data requests',
+    () async {
+      final signedOut = SupabaseClient(
+        'https://inventory.example.com',
+        'test-key',
+        authOptions: const AuthClientOptions(autoRefreshToken: false),
+        httpClient: MockClient(
+          (_) => throw StateError('Unexpected network request'),
+        ),
+      );
+      addTearDown(signedOut.dispose);
+      final dataSource = ProductRemoteDataSource(signedOut);
+      for (final action in <Future<Object?> Function()>[
+        dataSource.getProducts,
+        () => dataSource.getProduct(_id),
+        dataSource.getFormOptions,
+        () => dataSource.createProduct(_product()),
+        () => dataSource.updateProduct(_product()),
+        () => dataSource.deleteProduct(_id),
+      ]) {
+        await expectLater(action(), throwsStateError);
+      }
+    },
+  );
+
+  test(
+    'account change while a response is in flight discards that response',
+    () async {
+      final pending = Completer<http.Response>();
+      handler = (_) => pending.future;
+      final result = source.getProducts();
+      final expectation = expectLater(result, throwsStateError);
+      await signIn('55555555-5555-4555-8555-555555555555');
+      pending.complete(_json([_row()]));
+      await expectation;
+    },
+  );
 }
