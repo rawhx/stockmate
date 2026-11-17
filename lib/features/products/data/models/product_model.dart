@@ -50,4 +50,16 @@ class ProductModel extends Product {
       currentStock: (json['current_stock'] as num).toInt(),
     );
   }
+
+  Map<String, dynamic> toWriteJson() {
+    return {
+      'code': code,
+      'name': name,
+      'price': price,
+      'unit': unit,
+      'category_id': categoryId,
+      'supplier_id': supplierId,
+      'minimum_stock': minimumStock,
+    };
+  }
 }
