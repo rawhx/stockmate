@@ -2,8 +2,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../domain/entities/product_form_options.dart';
 import '../models/product_model.dart';
+import 'product_data_source.dart';
 
-class ProductRemoteDataSource {
+class ProductRemoteDataSource implements ProductDataSource {
   ProductRemoteDataSource(this._client);
 
   final SupabaseClient _client;
@@ -105,12 +106,14 @@ class ProductRemoteDataSource {
     return products;
   }
 
+  @override
   Future<List<ProductModel>> getProducts() async {
     final ownerId = _ownerId();
     final rows = await _readAll('product_stock_summary', '*', ownerId);
     return _mapProducts(rows, ownerId);
   }
 
+  @override
   Future<ProductModel?> getProduct(String id) async {
     final ownerId = _ownerId();
     final row = await _client
@@ -124,6 +127,7 @@ class ProductRemoteDataSource {
     return (await _mapProducts([row], ownerId)).single;
   }
 
+  @override
   Future<ProductFormOptions> getFormOptions() async {
     final ownerId = _ownerId();
     final rows = await Future.wait([
@@ -167,6 +171,7 @@ class ProductRemoteDataSource {
     _checkSession(ownerId);
   }
 
+  @override
   Future<void> createProduct(ProductModel product) async {
     final ownerId = _ownerId();
     if (product.currentStock != 0) {
@@ -185,6 +190,7 @@ class ProductRemoteDataSource {
     _checkSession(ownerId);
   }
 
+  @override
   Future<void> updateProduct(ProductModel product) async {
     final ownerId = _ownerId();
     final existing = await _client
@@ -212,6 +218,25 @@ class ProductRemoteDataSource {
           .select('id');
       if (updated.isEmpty) {
         throw StateError('Produk tidak ditemukan atau tidak dapat diperbarui.');
+      }
+    } on PostgrestException catch (error) {
+      _writeError(error);
+    }
+    _checkSession(ownerId);
+  }
+
+  @override
+  Future<void> deleteProduct(String id) async {
+    final ownerId = _ownerId();
+    try {
+      final deleted = await _client
+          .from('products')
+          .delete()
+          .eq('id', id)
+          .eq('owner_id', ownerId)
+          .select('id');
+      if (deleted.isEmpty) {
+        throw StateError('Produk tidak ditemukan atau tidak dapat dihapus.');
       }
     } on PostgrestException catch (error) {
       _writeError(error);
