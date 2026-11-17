@@ -247,6 +247,41 @@ void main() {
     },
   );
 
+  test(
+    'metadata update can clear supplier without writing calculated stock',
+    () async {
+      await source.updateProduct(_product());
+      final request = requests.singleWhere(
+        (request) => request.method == 'PATCH',
+      );
+      final body = jsonDecode(request.body) as Map<String, dynamic>;
+      expect(body.containsKey('supplier_id'), isTrue);
+      expect(body['supplier_id'], isNull);
+      expect(body.containsKey('current_stock'), isFalse);
+      expect(body.containsKey('owner_id'), isFalse);
+      expect(request.url.queryParameters['owner_id'], 'eq.$_owner');
+      expect(request.url.queryParameters['id'], 'eq.$_id');
+    },
+  );
+
+  test(
+    'changed stock rejects update instead of reporting a false stock sync',
+    () async {
+      await expectLater(
+        source.updateProduct(_product(stock: 5)),
+        throwsStateError,
+      );
+      expect(requests.any((request) => request.method == 'PATCH'), isFalse);
+    },
+  );
+
+  test('zero-row update is not reported as success', () async {
+    final previous = handler;
+    handler = (request) =>
+        request.method == 'PATCH' ? _rows(request, []) : previous(request);
+    await expectLater(source.updateProduct(_product()), throwsStateError);
+  });
+
   test('duplicate product code is reported clearly', () async {
     final previous = handler;
     handler = (request) => request.method == 'POST'
