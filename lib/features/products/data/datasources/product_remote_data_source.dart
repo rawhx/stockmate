@@ -150,4 +150,53 @@ class ProductRemoteDataSource {
     );
   }
 
+  Future<void> _validateReferences(ProductModel product, String ownerId) async {
+    final names = await Future.wait([
+      _getNames('categories', [product.categoryId], ownerId),
+      _getNames('suppliers', [
+        if (product.supplierId != null) product.supplierId!,
+      ], ownerId),
+    ]);
+    if (!names[0].containsKey(product.categoryId)) {
+      throw StateError('Pilih kategori yang tersedia pada akun ini.');
+    }
+    if (product.supplierId != null &&
+        !names[1].containsKey(product.supplierId)) {
+      throw StateError('Pilih supplier yang tersedia pada akun ini.');
+    }
+    _checkSession(ownerId);
+  }
+
+  Future<void> createProduct(ProductModel product) async {
+    final ownerId = _ownerId();
+    if (product.currentStock != 0) {
+      throw StateError('Stok awal harus dicatat melalui transaksi stok.');
+    }
+    await _validateReferences(product, ownerId);
+    try {
+      await _client
+          .from('products')
+          .insert({...product.toWriteJson(), 'owner_id': ownerId})
+          .select('id')
+          .single();
+    } on PostgrestException catch (error) {
+      _writeError(error);
+    }
+    _checkSession(ownerId);
+  }
+
+  Never _writeError(PostgrestException error) {
+    if (error.code == '23503') {
+      throw StateError(
+        'Produk masih memiliki transaksi atau referensi kategori/supplier tidak tersedia.',
+      );
+    }
+    if (error.code == '23505') {
+      throw StateError('Kode produk sudah digunakan pada akun ini.');
+    }
+    if (error.code == '42501') {
+      throw StateError('Akun ini tidak memiliki akses untuk mengubah produk.');
+    }
+    throw error;
+  }
 }
