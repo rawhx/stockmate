@@ -15,7 +15,6 @@ import '../providers/category_provider.dart';
 import '../pages/category_list_page.dart';
 import '../pages/category_detail_page.dart';
 import '../pages/category_form_page.dart';
-import 'package:stockmate/features/products/presentation/providers/product_provider.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -70,10 +69,6 @@ final List<RouteBase> categoryRoutes = [
     path: '/categories/:id',
     builder: (context, state) {
       final id = state.pathParameters['id']!;
-      final productProvider = context.read<ProductProvider>();
-      if (productProvider.products.isEmpty && !productProvider.isLoading) {
-        productProvider.fetchProducts();
-      }
 
       return ChangeNotifierProvider<CategoryProvider>.value(
         value: _categoryProvider,

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:stockmate/features/products/presentation/providers/product_provider.dart';
-import 'package:stockmate/features/products/presentation/widgets/product_list_app_bar.dart';
 
 import '../../domain/entities/category_entity.dart';
 import '../providers/category_provider.dart';
@@ -88,16 +87,15 @@ class _CategoryListPageState extends State<CategoryListPage> {
         .toList();
 
     return Scaffold(
-      appBar: ProductListAppBar(
-        title: 'Categories',
-        subtitle: 'Manage your categories',
-        showActions: true,
-        additionalActions: [
+      appBar: AppBar(
+        title: const Text('Kategori Barang'),
+        actions: [
           IconButton(
             tooltip: 'Kelola kategori',
             onPressed: () => setState(() => _isEditMode = !_isEditMode),
             icon: Icon(_isEditMode ? Icons.check_rounded : Icons.tune_rounded),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: SafeArea(
