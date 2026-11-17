@@ -3,6 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:stockmate/app/app.dart';
 import 'package:stockmate/app/providers/app_providers.dart';
+import 'package:stockmate/features/products/data/datasources/product_mock_data_source.dart';
+import 'package:stockmate/features/products/data/repositories/product_repository_impl.dart';
+import 'package:stockmate/features/products/domain/repositories/product_repository.dart';
 import 'package:stockmate/features/auth/domain/entities/auth_user.dart';
 import 'package:stockmate/features/auth/domain/entities/sign_up_result.dart';
 import 'package:stockmate/features/auth/domain/errors/auth_failure.dart';
@@ -12,10 +15,16 @@ import 'helpers/fake_auth_repository.dart';
 void main() {
   Future<void> pumpApp(
     WidgetTester tester,
-    FakeAuthRepository repository,
-  ) async {
+    FakeAuthRepository repository, {
+    ProductRepository? products,
+  }) async {
     await tester.pumpWidget(
-      AppProviders(authRepository: repository, child: const StockMateApp()),
+      AppProviders(
+        authRepository: repository,
+        productRepository:
+            products ?? ProductRepositoryImpl(ProductMockDataSource()),
+        child: const StockMateApp(),
+      ),
     );
     await tester.pumpAndSettle();
   }
