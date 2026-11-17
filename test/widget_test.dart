@@ -193,6 +193,40 @@ void main() {
     expect(find.text('Password is required.'), findsOneWidget);
   });
 
+  testWidgets(
+    'deleting a product requires confirmation and returns to the list',
+    (tester) async {
+      final repository = FakeAuthRepository(
+        currentUser: const AuthUser(id: 'user-id', email: 'user@example.com'),
+      );
+      addTearDown(repository.dispose);
+      await pumpApp(tester, repository);
+      await tester.tap(find.text('Beras Premium'));
+      await tester.pumpAndSettle();
+      final button = find.byKey(const Key('product_delete'));
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.text('Product details'), findsOneWidget);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Products'),
+        findsOneWidget,
+        reason: tester
+            .widgetList<Text>(find.byType(Text))
+            .map((text) => text.data)
+            .join(' | '),
+      );
+      expect(find.text('Beras Premium'), findsNothing);
+      expect(find.text('Product deleted.'), findsOneWidget);
+    },
+  );
+
   testWidgets('successful login opens the protected root page', (tester) async {
     const user = AuthUser(id: 'user-id', email: 'user@example.com');
     final repository = FakeAuthRepository()..signInResult = user;
