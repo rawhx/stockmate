@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -14,6 +15,7 @@ import '../providers/category_provider.dart';
 import '../pages/category_list_page.dart';
 import '../pages/category_detail_page.dart';
 import '../pages/category_form_page.dart';
+import 'package:stockmate/features/products/presentation/providers/product_provider.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -57,12 +59,8 @@ final List<RouteBase> categoryRoutes = [
         value: _categoryProvider,
         child: CategoryFormPage(
           parentId: parentId,
-          onSaved: () => parentId == null
-              ? context.go('/categories')
-              : context.go('/categories/$parentId'),
-          onCancel: () => parentId == null
-              ? context.go('/categories')
-              : context.go('/categories/$parentId'),
+          onSaved: () => _closeCategoryForm(context, parentId),
+          onCancel: () => _closeCategoryForm(context, parentId),
         ),
       );
     },
@@ -72,6 +70,10 @@ final List<RouteBase> categoryRoutes = [
     path: '/categories/:id',
     builder: (context, state) {
       final id = state.pathParameters['id']!;
+      final productProvider = context.read<ProductProvider>();
+      if (productProvider.products.isEmpty && !productProvider.isLoading) {
+        productProvider.fetchProducts();
+      }
 
       return ChangeNotifierProvider<CategoryProvider>.value(
         value: _categoryProvider,
@@ -102,10 +104,19 @@ final List<RouteBase> categoryRoutes = [
         value: _categoryProvider,
         child: CategoryFormPage(
           categoryId: id,
-          onSaved: () => context.go('/categories/$id'),
-          onCancel: () => context.go('/categories/$id'),
+          onSaved: () => _closeCategoryForm(context, id),
+          onCancel: () => _closeCategoryForm(context, id),
         ),
       );
     },
   ),
 ];
+
+void _closeCategoryForm(BuildContext context, String? returnId) {
+  if (context.canPop()) {
+    context.pop();
+    return;
+  }
+
+  context.go(returnId == null ? '/categories' : '/categories/$returnId');
+}

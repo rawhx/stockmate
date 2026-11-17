@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:stockmate/features/products/presentation/providers/product_provider.dart';
+import 'package:stockmate/features/products/presentation/widgets/product_list_app_bar.dart';
 
 import '../../domain/entities/category_entity.dart';
-import '../mock/category_products.dart';
 import '../providers/category_provider.dart';
 
 class CategoryListPage extends StatefulWidget {
@@ -32,6 +33,7 @@ class _CategoryListPageState extends State<CategoryListPage> {
       if (!mounted) return;
 
       context.read<CategoryProvider>().loadCategories();
+      context.read<ProductProvider>().fetchProducts();
     });
   }
 
@@ -86,15 +88,16 @@ class _CategoryListPageState extends State<CategoryListPage> {
         .toList();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Kategori Barang'),
-        actions: [
+      appBar: ProductListAppBar(
+        title: 'Categories',
+        subtitle: 'Manage your categories',
+        showActions: true,
+        additionalActions: [
           IconButton(
             tooltip: 'Kelola kategori',
             onPressed: () => setState(() => _isEditMode = !_isEditMode),
             icon: Icon(_isEditMode ? Icons.check_rounded : Icons.tune_rounded),
           ),
-          const SizedBox(width: 8),
         ],
       ),
       body: SafeArea(
@@ -278,79 +281,77 @@ class _CategoryListPageState extends State<CategoryListPage> {
   }
 
   Widget _buildCategoryTile(CategoryEntity category) {
-    final productStore = CategoryProductMockStore.instance;
+    final products = context
+        .watch<ProductProvider>()
+        .products
+        .where((product) => product.categoryId == category.id)
+        .toList();
 
-    return ListenableBuilder(
-      listenable: productStore,
-      builder: (context, _) {
-        final products = productStore.productsFor(category.id);
-        return Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          clipBehavior: Clip.antiAlias,
-          child: ExpansionTile(
-            leading: CircleAvatar(
-              radius: 18,
-              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
-              child: const Icon(Icons.folder_outlined, size: 19),
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        leading: CircleAvatar(
+          radius: 18,
+          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+          foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+          child: const Icon(Icons.folder_outlined, size: 19),
+        ),
+        title: Text(
+          category.name,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text('${products.length} produk'),
+        initiallyExpanded: _expandedCategories[category.id] ?? false,
+        onExpansionChanged: (expanded) {
+          setState(() => _expandedCategories[category.id] = expanded);
+        },
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              tooltip: 'Lihat detail ${category.name}',
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.open_in_new_outlined, size: 19),
+              onPressed: () => widget.onOpenDetail(category.id),
             ),
-            title: Text(
-              category.name,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-            subtitle: Text('${products.length} produk'),
-            initiallyExpanded: _expandedCategories[category.id] ?? false,
-            onExpansionChanged: (expanded) {
-              setState(() => _expandedCategories[category.id] = expanded);
-            },
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  tooltip: 'Lihat detail ${category.name}',
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.open_in_new_outlined, size: 19),
-                  onPressed: () => widget.onOpenDetail(category.id),
-                ),
-                if (_isEditMode) ...[
-                  IconButton(
-                    tooltip: 'Edit ${category.name}',
-                    visualDensity: VisualDensity.compact,
-                    icon: const Icon(Icons.edit_outlined, size: 20),
-                    onPressed: () => widget.onEditCategory(category.id),
-                  ),
-                  IconButton(
-                    tooltip: 'Hapus ${category.name}',
-                    visualDensity: VisualDensity.compact,
-                    color: Theme.of(context).colorScheme.error,
-                    icon: const Icon(Icons.delete_outline, size: 20),
-                    onPressed: () => _deleteCategory(category),
-                  ),
-                ],
-                AnimatedRotation(
-                  turns: _expandedCategories[category.id] == true ? 0.25 : 0,
-                  duration: const Duration(milliseconds: 180),
-                  child: const Icon(Icons.chevron_right),
-                ),
-              ],
-            ),
-            children: [
-              if (products.isNotEmpty)
-                for (final product in products)
-                  ListTile(
-                    contentPadding: const EdgeInsets.only(left: 20, right: 16),
-                    title: Text(product.name),
-                    subtitle: Text(product.code),
-                  ),
-              if (products.isEmpty)
-                const ListTile(
-                  leading: Icon(Icons.inventory_2_outlined),
-                  title: Text('Belum ada produk pada kategori ini.'),
-                ),
+            if (_isEditMode) ...[
+              IconButton(
+                tooltip: 'Edit ${category.name}',
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.edit_outlined, size: 20),
+                onPressed: () => widget.onEditCategory(category.id),
+              ),
+              IconButton(
+                tooltip: 'Hapus ${category.name}',
+                visualDensity: VisualDensity.compact,
+                color: Theme.of(context).colorScheme.error,
+                icon: const Icon(Icons.delete_outline, size: 20),
+                onPressed: () => _deleteCategory(category),
+              ),
             ],
-          ),
-        );
-      },
+            AnimatedRotation(
+              turns: _expandedCategories[category.id] == true ? 0.25 : 0,
+              duration: const Duration(milliseconds: 180),
+              child: const Icon(Icons.chevron_right),
+            ),
+          ],
+        ),
+        children: [
+          if (products.isNotEmpty)
+            for (final product in products)
+              ListTile(
+                contentPadding: const EdgeInsets.only(left: 20, right: 16),
+                title: Text(product.name),
+                subtitle: Text(product.code),
+              ),
+          if (products.isEmpty)
+            const ListTile(
+              leading: Icon(Icons.inventory_2_outlined),
+              title: Text('Belum ada produk pada kategori ini.'),
+            ),
+        ],
+      ),
     );
   }
 }

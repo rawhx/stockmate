@@ -1,6 +1,7 @@
 import '../models/product_model.dart';
+import 'product_data_source.dart';
 
-class ProductMockDataSource {
+class ProductMockDataSource implements ProductDataSource {
   final List<ProductModel> _products = [
     const ProductModel(
       id: '1',
@@ -43,12 +44,14 @@ class ProductMockDataSource {
     ),
   ];
 
+  @override
   Future<List<ProductModel>> getProducts() async {
     await Future<void>.delayed(const Duration(milliseconds: 300));
 
     return List.unmodifiable(_products);
   }
 
+  @override
   Future<ProductModel?> getProduct(String id) async {
     await Future<void>.delayed(const Duration(milliseconds: 150));
 
@@ -61,12 +64,14 @@ class ProductMockDataSource {
     return null;
   }
 
+  @override
   Future<void> createProduct(ProductModel product) async {
     await Future<void>.delayed(const Duration(milliseconds: 200));
 
     _products.add(product);
   }
 
+  @override
   Future<void> updateProduct(ProductModel product) async {
     await Future<void>.delayed(const Duration(milliseconds: 200));
 
@@ -79,6 +84,7 @@ class ProductMockDataSource {
     _products[index] = product;
   }
 
+  @override
   Future<void> deleteProduct(String id) async {
     await Future<void>.delayed(const Duration(milliseconds: 200));
 

@@ -10,7 +10,7 @@ import 'package:stockmate/features/auth/domain/usecases/sign_out.dart';
 import 'package:stockmate/features/auth/domain/usecases/sign_up.dart';
 import 'package:stockmate/features/auth/domain/usecases/watch_auth_state.dart';
 import 'package:stockmate/features/auth/presentation/providers/auth_provider.dart';
-import 'package:stockmate/features/products/data/datasources/product_mock_data_source.dart';
+import 'package:stockmate/features/products/data/datasources/product_supabase_data_source.dart';
 import 'package:stockmate/features/products/data/repositories/product_repository_impl.dart';
 import 'package:stockmate/features/products/domain/usecases/create_product.dart';
 import 'package:stockmate/features/products/domain/usecases/delete_product.dart';
@@ -67,7 +67,10 @@ class AppProviders extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) {
-            final repository = ProductRepositoryImpl(ProductMockDataSource());
+            final dataSource = ProductSupabaseDataSource(
+              Supabase.instance.client,
+            );
+            final repository = ProductRepositoryImpl(dataSource);
             return ProductProvider(
               getProducts: GetProducts(repository),
               getProduct: GetProduct(repository),

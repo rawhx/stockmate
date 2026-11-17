@@ -202,6 +202,11 @@ class CategoryDetailPage extends StatelessWidget {
     final subcategories = provider.categories
         .where((item) => item.parentId == categoryId)
         .toList();
+    final products = context
+        .watch<ProductProvider>()
+        .products
+        .where((product) => product.categoryId == categoryId)
+        .toList();
     CategoryEntity? parentCategory;
     if (selectedCategory.parentId != null) {
       for (final item in provider.categories) {
@@ -247,155 +252,140 @@ class CategoryDetailPage extends StatelessWidget {
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 650),
-          child: ListenableBuilder(
-            listenable: context.watch<ProductProvider>(),
-            builder: (context, _) {
-              final products = context
-                  .watch<ProductProvider>()
-                  .products
-                  .where((product) => product.categoryId == categoryId)
-                  .toList();
-
-              return ListView(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 96),
-                children: [
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 96),
+            children: [
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 24,
-                                backgroundColor: Theme.of(
-                                  context,
-                                ).colorScheme.primaryContainer,
-                                foregroundColor: Theme.of(
-                                  context,
-                                ).colorScheme.onPrimaryContainer,
-                                child: const Icon(Icons.folder_outlined),
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Text(
-                                  selectedCategory.name,
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.headlineSmall,
-                                ),
-                              ),
-                            ],
+                          CircleAvatar(
+                            radius: 24,
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.primaryContainer,
+                            foregroundColor: Theme.of(
+                              context,
+                            ).colorScheme.onPrimaryContainer,
+                            child: const Icon(Icons.folder_outlined),
                           ),
-                          if (parentCategory != null) ...[
-                            const SizedBox(height: 12),
-                            Chip(
-                              avatar: const Icon(Icons.folder_open_outlined),
-                              label: Text('Bagian dari ${parentCategory.name}'),
-                              visualDensity: VisualDensity.compact,
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Text(
+                              selectedCategory.name,
+                              style: Theme.of(context).textTheme.headlineSmall,
                             ),
-                          ],
-                          const SizedBox(height: 16),
-                          Text(
-                            'Deskripsi',
-                            style: Theme.of(context).textTheme.labelLarge,
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            selectedCategory.description?.isNotEmpty == true
-                                ? selectedCategory.description!
-                                : 'Tidak ada deskripsi',
-                            style: Theme.of(context).textTheme.bodyLarge,
                           ),
                         ],
                       ),
+                      if (parentCategory != null) ...[
+                        const SizedBox(height: 12),
+                        Chip(
+                          avatar: const Icon(Icons.folder_open_outlined),
+                          label: Text('Bagian dari ${parentCategory.name}'),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      Text(
+                        'Deskripsi',
+                        style: Theme.of(context).textTheme.labelLarge,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        selectedCategory.description?.isNotEmpty == true
+                            ? selectedCategory.description!
+                            : 'Tidak ada deskripsi',
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Subkategori',
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Subkategori',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: onAddSubcategory,
-                        icon: const Icon(Icons.add),
-                        label: const Text('Tambah'),
-                      ),
-                    ],
+                  TextButton.icon(
+                    onPressed: onAddSubcategory,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Tambah'),
                   ),
-                  if (subcategories.isEmpty)
-                    const Card(
-                      child: ListTile(
-                        leading: Icon(Icons.account_tree_outlined),
-                        title: Text('Belum ada subkategori.'),
-                      ),
-                    )
-                  else ...[
-                    const SizedBox(height: 8),
-                    for (final subcategory in subcategories)
-                      _buildSubcategoryTile(context, subcategory),
-                  ],
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Produk dalam kategori ini',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ),
-                      Chip(
-                        label: Text('${products.length}'),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  if (products.isEmpty)
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.inventory_2_outlined,
-                              size: 36,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                            ),
-                            const SizedBox(height: 8),
-                            const Text('Belum ada produk di kategori ini.'),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Tambahkan produk pertama menggunakan tombol di bawah.',
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    for (final product in products)
-                      Card(
-                        child: ListTile(
-                          title: Text(product.name),
-                          subtitle: Text(product.code),
-                          trailing: Text(
-                            'Rp ${product.price.toStringAsFixed(0)}',
-                            style: Theme.of(context).textTheme.labelLarge,
-                          ),
-                        ),
-                      ),
                 ],
-              );
-            },
+              ),
+              if (subcategories.isEmpty)
+                const Card(
+                  child: ListTile(
+                    leading: Icon(Icons.account_tree_outlined),
+                    title: Text('Belum ada subkategori.'),
+                  ),
+                )
+              else ...[
+                const SizedBox(height: 8),
+                for (final subcategory in subcategories)
+                  _buildSubcategoryTile(context, subcategory),
+              ],
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Produk dalam kategori ini',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                  Chip(
+                    label: Text('${products.length}'),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (products.isEmpty)
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.inventory_2_outlined,
+                          size: 36,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(height: 8),
+                        const Text('Belum ada produk di kategori ini.'),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Tambahkan produk pertama menggunakan tombol di bawah.',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                for (final product in products)
+                  Card(
+                    child: ListTile(
+                      title: Text(product.name),
+                      subtitle: Text(product.code),
+                      trailing: Text(
+                        'Rp ${product.price.toStringAsFixed(0)}',
+                        style: Theme.of(context).textTheme.labelLarge,
+                      ),
+                    ),
+                  ),
+            ],
           ),
         ),
       ),
