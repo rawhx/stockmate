@@ -1,8 +1,30 @@
 import 'package:stockmate/features/products/data/datasources/product_data_source.dart';
 
 import '../models/product_model.dart';
+import '../../domain/entities/product_form_options.dart';
 
 class ProductMockDataSource implements ProductDataSource {
+  @override
+  Future<ProductFormOptions> getFormOptions() async {
+    final categories = <String, ProductOption>{};
+    final suppliers = <String, ProductOption>{};
+    for (final product in _products) {
+      categories[product.categoryId] = ProductOption(
+        id: product.categoryId,
+        name: product.categoryName,
+      );
+      if (product.supplierId != null) {
+        suppliers[product.supplierId!] = ProductOption(
+          id: product.supplierId!,
+          name: product.supplierName ?? '',
+        );
+      }
+    }
+    return ProductFormOptions(
+      categories: categories.values.toList(),
+      suppliers: suppliers.values.toList(),
+    );
+  }
 
   final List<ProductModel> _products = [
     const ProductModel(
