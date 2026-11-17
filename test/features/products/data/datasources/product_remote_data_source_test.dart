@@ -282,6 +282,40 @@ void main() {
     await expectLater(source.updateProduct(_product()), throwsStateError);
   });
 
+  test(
+    'deletion filters by product and account and verifies the result',
+    () async {
+      await source.deleteProduct(_id);
+      expect(requests.single.method, 'DELETE');
+      expect(requests.single.url.queryParameters['id'], 'eq.$_id');
+      expect(requests.single.url.queryParameters['owner_id'], 'eq.$_owner');
+    },
+  );
+
+  test('deletion with no accessible row fails', () async {
+    handler = (request) => _rows(request, []);
+    await expectLater(source.deleteProduct(_id), throwsStateError);
+  });
+
+  test('foreign key restrict error becomes a useful inventory error', () async {
+    handler = (_) => _json({
+      'code': '23503',
+      'message': 'foreign key violation',
+      'details': null,
+      'hint': null,
+    }, 409);
+    await expectLater(
+      source.deleteProduct(_id),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          contains('transaksi'),
+        ),
+      ),
+    );
+  });
+
   test('duplicate product code is reported clearly', () async {
     final previous = handler;
     handler = (request) => request.method == 'POST'
