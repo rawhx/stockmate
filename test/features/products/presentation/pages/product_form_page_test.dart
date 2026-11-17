@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:stockmate/features/products/data/datasources/product_mock_data_source.dart';
+import 'package:stockmate/features/products/data/datasources/product_data_source.dart';
 import 'package:stockmate/features/products/data/repositories/product_repository_impl.dart';
 import 'package:stockmate/features/products/domain/usecases/create_product.dart';
 import 'package:stockmate/features/products/domain/usecases/delete_product.dart';
@@ -14,12 +15,14 @@ import 'package:stockmate/features/products/presentation/pages/product_form_page
 import 'package:stockmate/features/products/presentation/providers/product_provider.dart';
 
 void main() {
-  ProductProvider createProvider() {
-    final repository = ProductRepositoryImpl(ProductMockDataSource());
+  ProductProvider createProvider([ProductDataSource? dataSource]) {
+    final repository = ProductRepositoryImpl(
+      dataSource ?? ProductMockDataSource(),
+    );
     return ProductProvider(
       getProducts: GetProducts(repository),
-      getProduct: GetProduct(repository),
       getFormOptions: GetProductFormOptions(repository),
+      getProduct: GetProduct(repository),
       createProduct: CreateProduct(repository),
       updateProduct: UpdateProduct(repository),
       deleteProduct: DeleteProduct(repository),
@@ -29,12 +32,13 @@ void main() {
   Future<({GoRouter router, ProductProvider provider})> pumpForm(
     WidgetTester tester, {
     String? productId,
+    ProductDataSource? dataSource,
     Size size = const Size(390, 844),
   }) async {
     await tester.binding.setSurfaceSize(size);
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final provider = createProvider();
+    final provider = createProvider(dataSource);
     final formPath = productId == null ? '/form' : '/form/$productId';
     final router = GoRouter(
       initialLocation: formPath,
@@ -60,7 +64,7 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
     return (router: router, provider: provider);
   }
 
@@ -88,22 +92,37 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
   }
 
+  Future<void> selectOption(
+    WidgetTester tester,
+    String key,
+    String name,
+  ) async {
+    final field = find.byKey(Key(key));
+    await tester.ensureVisible(field);
+    await tester.tap(field);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(name).last);
+    await tester.pumpAndSettle();
+  }
+
   testWidgets('creates a product with valid form values', (tester) async {
     final setup = await pumpForm(tester);
 
     await enterText(tester, const Key('product_code'), 'PRD-004');
     await enterText(tester, const Key('product_name'), 'Brown Sugar');
-    await enterText(tester, const Key('product_category'), 'Food');
+    await selectOption(tester, 'product_category', 'Food');
     await enterText(tester, const Key('product_unit'), 'pack');
     await enterText(tester, const Key('product_price'), '15000');
-    await enterText(tester, const Key('product_current_stock'), '20');
     await enterText(tester, const Key('product_minimum_stock'), '5');
-    await enterText(tester, const Key('product_supplier'), 'Sweet Supply');
+    await selectOption(tester, 'product_supplier', 'PT Sumber Pangan');
 
     await tapSubmit(tester);
 
     expect(setup.provider.products, hasLength(4));
     expect(setup.provider.products.last.name, 'Brown Sugar');
+    expect(setup.provider.products.last.categoryId, 'cat-1');
+    expect(setup.provider.products.last.supplierId, 'sup-1');
+    expect(setup.provider.products.last.currentStock, 0);
   });
 
   testWidgets('loads and updates an existing product', (tester) async {
@@ -123,6 +142,7 @@ void main() {
       (product) => product.id == '1',
     );
     expect(updated.name, 'Beras Organik');
+    expect(updated.currentStock, 25);
   });
 
   testWidgets('validates required fields before creating a product', (

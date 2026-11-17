@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:stockmate/features/products/domain/entities/product.dart';
+import 'package:stockmate/features/products/domain/entities/product_form_options.dart';
 import 'package:stockmate/features/products/presentation/providers/product_provider.dart';
 import 'package:stockmate/features/products/presentation/widgets/product_detail_states.dart';
 import 'package:stockmate/features/products/presentation/widgets/product_form_fields.dart';
@@ -23,30 +24,34 @@ class _ProductFormPageState extends State<ProductFormPage> {
   final _nameController = TextEditingController();
   final _priceController = TextEditingController();
   final _unitController = TextEditingController();
-  final _categoryController = TextEditingController();
-  final _supplierController = TextEditingController();
-  final _minimumStockController = TextEditingController();
-  final _currentStockController = TextEditingController();
+  final _minimumStockController = TextEditingController(text: '0');
+  final _currentStockController = TextEditingController(text: '0');
+  ProductFormOptions _options = const ProductFormOptions(
+    categories: [],
+    suppliers: [],
+  );
+  String? _categoryId;
+  String? _supplierId;
 
   Product? _originalProduct;
   String? _loadError;
   String? _submitError;
-  bool _isLoading = false;
+  bool _isLoading = true;
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    if (widget.isEditing) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _loadProduct());
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadForm();
+    });
   }
 
   @override
   void didUpdateWidget(covariant ProductFormPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.productId != widget.productId && widget.isEditing) {
-      _loadProduct();
+    if (oldWidget.productId != widget.productId) {
+      _loadForm();
     }
   }
 
@@ -56,31 +61,48 @@ class _ProductFormPageState extends State<ProductFormPage> {
     _nameController.dispose();
     _priceController.dispose();
     _unitController.dispose();
-    _categoryController.dispose();
-    _supplierController.dispose();
     _minimumStockController.dispose();
     _currentStockController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadProduct() async {
+  Future<void> _loadForm() async {
     setState(() {
       _isLoading = true;
       _loadError = null;
     });
 
     try {
-      final product = await context.read<ProductProvider>().getProductById(
-        widget.productId!,
-      );
+      final provider = context.read<ProductProvider>();
+      final results = await Future.wait<Object?>([
+        provider.getFormOptions(),
+        if (widget.isEditing) provider.getProductById(widget.productId!),
+      ]);
       if (!mounted) return;
-      setState(() => _originalProduct = product);
+      final options = results[0] as ProductFormOptions;
+      final product = widget.isEditing ? results[1] as Product? : null;
+      if (product != null &&
+          (!options.categories.any((item) => item.id == product.categoryId) ||
+              (product.supplierId != null &&
+                  !options.suppliers.any(
+                    (item) => item.id == product.supplierId,
+                  )))) {
+        throw StateError(
+          'Product references are unavailable in this account. Check its category and supplier.',
+        );
+      }
+      setState(() {
+        _options = options;
+        _originalProduct = product;
+      });
       if (product != null) _fillForm(product);
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
       setState(() {
         _originalProduct = null;
-        _loadError = 'The product could not be loaded. Please try again.';
+        _loadError = error is StateError
+            ? error.message
+            : 'The product form could not be loaded. Please try again.';
       });
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -92,8 +114,8 @@ class _ProductFormPageState extends State<ProductFormPage> {
     _nameController.text = product.name;
     _priceController.text = _numberText(product.price);
     _unitController.text = product.unit;
-    _categoryController.text = product.categoryName;
-    _supplierController.text = product.supplierName ?? '';
+    _categoryId = product.categoryId;
+    _supplierId = product.supplierId;
     _minimumStockController.text = '${product.minimumStock}';
     _currentStockController.text = '${product.currentStock}';
   }
@@ -107,8 +129,13 @@ class _ProductFormPageState extends State<ProductFormPage> {
     });
 
     final original = _originalProduct;
-    final supplierName = _supplierController.text.trim();
-    final categoryName = _categoryController.text.trim();
+    final category = _options.categories.firstWhere(
+      (item) => item.id == _categoryId,
+    );
+    ProductOption? supplier;
+    for (final option in _options.suppliers) {
+      if (option.id == _supplierId) supplier = option;
+    }
     final product = Product(
       id:
           original?.id ??
@@ -117,16 +144,12 @@ class _ProductFormPageState extends State<ProductFormPage> {
       name: _nameController.text.trim(),
       price: double.parse(_priceController.text.trim()),
       unit: _unitController.text.trim(),
-      categoryId: original?.categoryName == categoryName
-          ? original!.categoryId
-          : _slug(categoryName),
-      categoryName: categoryName,
-      supplierId: original?.supplierName == supplierName
-          ? original?.supplierId
-          : null,
-      supplierName: supplierName.isEmpty ? null : supplierName,
+      categoryId: category.id,
+      categoryName: category.name,
+      supplierId: supplier?.id,
+      supplierName: supplier?.name,
       minimumStock: int.parse(_minimumStockController.text.trim()),
-      currentStock: int.parse(_currentStockController.text.trim()),
+      currentStock: original?.currentStock ?? 0,
     );
 
     final provider = context.read<ProductProvider>();
@@ -167,14 +190,11 @@ class _ProductFormPageState extends State<ProductFormPage> {
     }
 
     if (_loadError != null) {
-      return ProductDetailErrorState(
-        message: _loadError!,
-        onRetry: _loadProduct,
-      );
+      return ProductDetailErrorState(message: _loadError!, onRetry: _loadForm);
     }
 
     if (widget.isEditing && _originalProduct == null) {
-      return ProductNotFoundState(onRetry: _loadProduct);
+      return ProductNotFoundState(onRetry: _loadForm);
     }
 
     return SingleChildScrollView(
@@ -189,8 +209,11 @@ class _ProductFormPageState extends State<ProductFormPage> {
               nameController: _nameController,
               priceController: _priceController,
               unitController: _unitController,
-              categoryController: _categoryController,
-              supplierController: _supplierController,
+              options: _options,
+              categoryId: _categoryId,
+              supplierId: _supplierId,
+              onCategoryChanged: (value) => setState(() => _categoryId = value),
+              onSupplierChanged: (value) => setState(() => _supplierId = value),
               minimumStockController: _minimumStockController,
               currentStockController: _currentStockController,
               isEditing: widget.isEditing,
@@ -202,13 +225,6 @@ class _ProductFormPageState extends State<ProductFormPage> {
         ),
       ),
     );
-  }
-
-  String _slug(String value) {
-    return value
-        .toLowerCase()
-        .replaceAll(RegExp('[^a-z0-9]+'), '-')
-        .replaceAll(RegExp('(^-+|-+\$)'), '');
   }
 
   String _numberText(double value) {
