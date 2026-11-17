@@ -2,21 +2,18 @@ import 'package:flutter/foundation.dart';
 
 import '../../domain/entities/category_entity.dart';
 import '../../domain/usecases/get_categories.dart';
-import '../../domain/usecases/get_category_by_id.dart';
 import '../../domain/usecases/add_category.dart';
 import '../../domain/usecases/update_category.dart';
 import '../../domain/usecases/delete_category.dart';
 
 class CategoryProvider extends ChangeNotifier {
   final GetCategories getCategories;
-  final GetCategoryById getCategoryById;
   final AddCategory addCategory;
   final UpdateCategory updateCategory;
   final DeleteCategory deleteCategory;
 
   CategoryProvider({
     required this.getCategories,
-    required this.getCategoryById,
     required this.addCategory,
     required this.updateCategory,
     required this.deleteCategory,
@@ -33,19 +30,6 @@ class CategoryProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   String get searchQuery => _searchQuery;
-
-  // FILTER PENCARIAN
-  List<CategoryEntity> get filteredCategories {
-    final query = _searchQuery.trim().toLowerCase();
-
-    if (query.isEmpty) {
-      return categories;
-    }
-
-    return categories.where((category) {
-      return category.name.toLowerCase().contains(query);
-    }).toList();
-  }
 
   void setSearchQuery(String query) {
     if (_searchQuery == query) return;
@@ -67,18 +51,6 @@ class CategoryProvider extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
-    }
-  }
-
-  // READ DETAIL
-  Future<CategoryEntity?> loadCategoryById(String id) async {
-    try {
-      _errorMessage = null;
-      return await getCategoryById(id);
-    } catch (e) {
-      _errorMessage = 'Gagal mengambil detail kategori: $e';
-      notifyListeners();
-      return null;
     }
   }
 

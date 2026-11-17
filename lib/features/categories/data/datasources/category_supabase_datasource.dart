@@ -29,21 +29,6 @@ class CategorySupabaseDataSource {
         .toList(growable: false);
   }
 
-  Future<CategoryModel?> getCategoryById(String id) async {
-    final rows = await client
-        .from('categories')
-        .select()
-        .eq('id', id)
-        .eq('owner_id', _currentUserId)
-        .maybeSingle();
-
-    if (rows == null) {
-      return null;
-    }
-
-    return CategoryModel.fromMap(rows);
-  }
-
   Future<CategoryModel> addCategory(CategoryModel category) async {
     final row = await client
         .from('categories')

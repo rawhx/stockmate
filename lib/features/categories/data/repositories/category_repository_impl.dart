@@ -13,11 +13,6 @@ class CategoryRepositoryImpl implements CategoryRepository {
     return dataSource.getCategories();
   }
 
-  @override
-  Future<CategoryEntity?> getCategoryById(String id) async {
-    return dataSource.getCategoryById(id);
-  }
-
   CategoryModel _toModel(CategoryEntity category) {
     return CategoryModel(
       id: category.id,

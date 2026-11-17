@@ -6,7 +6,6 @@ import '../../data/datasources/category_supabase_datasource.dart';
 import '../../data/repositories/category_repository_impl.dart';
 
 import '../../domain/usecases/get_categories.dart';
-import '../../domain/usecases/get_category_by_id.dart';
 import '../../domain/usecases/add_category.dart';
 import '../../domain/usecases/update_category.dart';
 import '../../domain/usecases/delete_category.dart';
@@ -26,7 +25,6 @@ final CategoryRepositoryImpl _repository = CategoryRepositoryImpl(_dataSource);
 
 final CategoryProvider _categoryProvider = CategoryProvider(
   getCategories: GetCategories(_repository),
-  getCategoryById: GetCategoryById(_repository),
   addCategory: AddCategory(_repository),
   updateCategory: UpdateCategory(_repository),
   deleteCategory: DeleteCategory(_repository),
