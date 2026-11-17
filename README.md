@@ -1,15 +1,17 @@
 # StockMate
 
 StockMate is a university inventory-management project built for collaborative
-development. The application starts with local or dummy data for the UI stage
-and will use Supabase for database integration in a later stage.
+development. Authentication and product management use Supabase. Other feature
+modules still use local or dummy data while their integrations are developed.
+See [the products integration guide](docs/products-supabase.md) for the database
+contract, supported behavior, and verification steps.
 
 ## Tech stack
 
 - Flutter
 - Provider with `ChangeNotifier`
 - `go_router`
-- Supabase (planned; not integrated yet)
+- Supabase for authentication and products
 
 ## Supported platforms
 
