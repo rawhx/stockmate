@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../domain/entities/product_form_options.dart';
 import '../models/product_model.dart';
 
 class ProductRemoteDataSource {
@@ -121,6 +122,32 @@ class ProductRemoteDataSource {
     _checkSession(ownerId);
     if (row == null) return null;
     return (await _mapProducts([row], ownerId)).single;
+  }
+
+  Future<ProductFormOptions> getFormOptions() async {
+    final ownerId = _ownerId();
+    final rows = await Future.wait([
+      _readAll('categories', 'id, name', ownerId),
+      _readAll('suppliers', 'id, name', ownerId),
+    ]);
+    List<ProductOption> options(List<Map<String, dynamic>> items) {
+      final result =
+          items
+              .map(
+                (row) => ProductOption(
+                  id: row['id'] as String,
+                  name: row['name'] as String,
+                ),
+              )
+              .toList()
+            ..sort((a, b) => a.name.compareTo(b.name));
+      return List.unmodifiable(result);
+    }
+
+    return ProductFormOptions(
+      categories: options(rows[0]),
+      suppliers: options(rows[1]),
+    );
   }
 
 }
