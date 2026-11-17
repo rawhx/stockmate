@@ -148,4 +148,39 @@ void main() {
     expect(reads, 2);
     expect(provider.products.single.name, 'Saved product');
   });
+
+  test(
+    'old-account deletion completion cannot modify new-account inventory',
+    () async {
+      final pending = Completer<void>();
+      repository.remove = (_) => pending.future;
+      provider.setOwner('a');
+      final removal = provider.removeProduct('1');
+      provider.setOwner('b');
+      await provider.fetchProducts();
+      pending.complete();
+      expect(await removal, isFalse);
+      expect(provider.products.single.id, '1');
+    },
+  );
+
+  test('failed delete keeps cached product available', () async {
+    await provider.fetchProducts();
+    repository.remove = (_) async =>
+        throw StateError('Product has transactions');
+    expect(await provider.removeProduct('1'), isFalse);
+    expect(provider.products, hasLength(1));
+    expect(provider.errorMessage, 'Product has transactions');
+  });
+
+  test(
+    'successful delete removes cached product even if refresh fails',
+    () async {
+      await provider.fetchProducts();
+      repository.fetch = () async => throw StateError('Refresh failed');
+      expect(await provider.removeProduct('1'), isTrue);
+      expect(provider.products, isEmpty);
+      expect(provider.errorMessage, 'Refresh failed');
+    },
+  );
 }
