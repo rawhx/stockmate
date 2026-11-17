@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../domain/entities/product.dart';
@@ -17,16 +19,14 @@ class ProductProvider extends ChangeNotifier {
     required CreateProduct createProduct,
     required UpdateProduct updateProduct,
     required DeleteProduct deleteProduct,
-  }) {
-    return ProductProvider._(
-      getProducts,
-      getProduct,
-      getFormOptions,
-      createProduct,
-      updateProduct,
-      deleteProduct,
-    );
-  }
+  }) => ProductProvider._(
+    getProducts,
+    getProduct,
+    getFormOptions,
+    createProduct,
+    updateProduct,
+    deleteProduct,
+  );
 
   ProductProvider._(
     this._getProducts,
@@ -46,32 +46,79 @@ class ProductProvider extends ChangeNotifier {
 
   List<Product> _products = [];
   bool _isLoading = false;
+  bool _disposed = false;
+  int _generation = 0;
+  String? _ownerId;
+  bool _hasOwner = false;
   String? _errorMessage;
+  Future<void>? _pendingFetch;
 
   List<Product> get products => List.unmodifiable(_products);
-
   bool get isLoading => _isLoading;
-
   String? get errorMessage => _errorMessage;
 
-  Future<void> fetchProducts() async {
-    _setLoading(true);
-
-    try {
-      _products = await _getProducts();
-      _errorMessage = null;
-    } catch (error) {
-      _errorMessage = error.toString();
-    } finally {
-      _setLoading(false);
+  // Invalidate outstanding requests as well as visible data across accounts.
+  void setOwner(String? ownerId) {
+    if (_hasOwner && ownerId == _ownerId) return;
+    _hasOwner = true;
+    _ownerId = ownerId;
+    _generation++;
+    _products = [];
+    _errorMessage = null;
+    _pendingFetch = null;
+    _isLoading = false;
+    _notify();
+    if (ownerId != null) {
+      final generation = _generation;
+      scheduleMicrotask(() {
+        if (_isCurrent(generation)) unawaited(fetchProducts());
+      });
     }
   }
 
-  Future<Product?> getProductById(String id) {
-    return _getProduct(id);
+  bool _isCurrent(int generation) => !_disposed && generation == _generation;
+
+  Future<void> fetchProducts() {
+    if (_pendingFetch != null) return _pendingFetch!;
+    final request = _fetchProducts(_generation);
+    _pendingFetch = request;
+    return request.whenComplete(() {
+      if (identical(_pendingFetch, request)) _pendingFetch = null;
+    });
   }
 
-  Future<ProductFormOptions> getFormOptions() => _getFormOptions();
+  Future<void> _fetchProducts(int generation) async {
+    _isLoading = true;
+    _notify();
+    try {
+      final products = await _getProducts();
+      if (!_isCurrent(generation)) return;
+      _products = products;
+      _errorMessage = null;
+    } catch (error) {
+      if (_isCurrent(generation)) _errorMessage = _message(error);
+    } finally {
+      if (_isCurrent(generation)) {
+        _isLoading = false;
+        _notify();
+      }
+    }
+  }
+
+  Future<Product?> getProductById(String id) async {
+    final generation = _generation;
+    final product = await _getProduct(id);
+    return _isCurrent(generation) ? product : null;
+  }
+
+  Future<ProductFormOptions> getFormOptions() async {
+    final generation = _generation;
+    final options = await _getFormOptions();
+    if (!_isCurrent(generation)) {
+      throw StateError('Akun telah berubah. Muat ulang form.');
+    }
+    return options;
+  }
 
   Future<bool> addProduct(Product product) async {
     try {
@@ -109,8 +156,16 @@ class ProductProvider extends ChangeNotifier {
     }
   }
 
-  void _setLoading(bool value) {
-    _isLoading = value;
-    notifyListeners();
+  String _message(Object error) =>
+      error is StateError ? error.message : error.toString();
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _generation++;
+    super.dispose();
   }
 }
