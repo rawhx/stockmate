@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../../domain/entities/category_entity.dart';
 import '../mock/category_products.dart';
-import '../widgets/product_image.dart';
 import '../providers/category_provider.dart';
 
 class CategoryListPage extends StatefulWidget {
@@ -340,10 +339,6 @@ class _CategoryListPageState extends State<CategoryListPage> {
                 for (final product in products)
                   ListTile(
                     contentPadding: const EdgeInsets.only(left: 20, right: 16),
-                    leading: ProductImage(
-                      productName: product.name,
-                      imageUrl: product.imageUrl,
-                    ),
                     title: Text(product.name),
                     subtitle: Text(product.code),
                   ),

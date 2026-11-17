@@ -5,7 +5,6 @@ import '../../domain/entities/category_entity.dart';
 import '../../../products/domain/entities/product.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import '../providers/category_provider.dart';
-import '../widgets/product_image.dart';
 
 class CategoryDetailPage extends StatelessWidget {
   final String categoryId;
@@ -386,7 +385,6 @@ class CategoryDetailPage extends StatelessWidget {
                     for (final product in products)
                       Card(
                         child: ListTile(
-                          leading: ProductImage(productName: product.name),
                           title: Text(product.name),
                           subtitle: Text(product.code),
                           trailing: Text(
