@@ -96,4 +96,56 @@ void main() {
     pending.complete(_product);
     expect(await request, isNull);
   });
+
+  test('write failure is surfaced and not reported as success', () async {
+    repository.create = (_) async =>
+        throw StateError('Product code already exists');
+    expect(await provider.addProduct(_product), isFalse);
+    expect(provider.errorMessage, 'Product code already exists');
+    expect(provider.isSaving, isFalse);
+  });
+
+  test(
+    'refresh error after successful save does not invite duplicate creation',
+    () async {
+      var saves = 0;
+      repository.create = (_) async {
+        saves++;
+      };
+      repository.fetch = () async => throw StateError('Refresh failed');
+      expect(await provider.addProduct(_product), isTrue);
+      expect(saves, 1);
+      expect(provider.errorMessage, 'Refresh failed');
+      expect(provider.isSaving, isFalse);
+    },
+  );
+
+  test('simultaneous save attempts perform only one write', () async {
+    final pending = Completer<void>();
+    var saves = 0;
+    repository.create = (_) {
+      saves++;
+      return pending.future;
+    };
+    final first = provider.addProduct(_product);
+    expect(await provider.addProduct(_product), isFalse);
+    pending.complete();
+    expect(await first, isTrue);
+    expect(saves, 1);
+  });
+
+  test('save refreshes again after a previously pending read', () async {
+    final pending = Completer<List<Product>>();
+    var reads = 0;
+    repository.fetch = () => ++reads == 1
+        ? pending.future
+        : Future.value([_product.copyWith(name: 'Saved product')]);
+    final oldRead = provider.fetchProducts();
+    final save = provider.addProduct(_product);
+    pending.complete([_product]);
+    await oldRead;
+    expect(await save, isTrue);
+    expect(reads, 2);
+    expect(provider.products.single.name, 'Saved product');
+  });
 }
