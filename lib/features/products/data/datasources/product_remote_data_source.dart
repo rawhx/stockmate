@@ -185,6 +185,40 @@ class ProductRemoteDataSource {
     _checkSession(ownerId);
   }
 
+  Future<void> updateProduct(ProductModel product) async {
+    final ownerId = _ownerId();
+    final existing = await _client
+        .from('product_stock_summary')
+        .select('current_stock')
+        .eq('id', product.id)
+        .eq('owner_id', ownerId)
+        .maybeSingle();
+    _checkSession(ownerId);
+    if (existing == null) {
+      throw StateError('Produk tidak ditemukan atau tidak dapat diakses.');
+    }
+    if (product.currentStock != (existing['current_stock'] as num).toInt()) {
+      throw StateError(
+        'Stok telah berubah. Muat ulang produk; stok dikelola melalui transaksi.',
+      );
+    }
+    await _validateReferences(product, ownerId);
+    try {
+      final updated = await _client
+          .from('products')
+          .update(product.toWriteJson())
+          .eq('id', product.id)
+          .eq('owner_id', ownerId)
+          .select('id');
+      if (updated.isEmpty) {
+        throw StateError('Produk tidak ditemukan atau tidak dapat diperbarui.');
+      }
+    } on PostgrestException catch (error) {
+      _writeError(error);
+    }
+    _checkSession(ownerId);
+  }
+
   Never _writeError(PostgrestException error) {
     if (error.code == '23503') {
       throw StateError(
