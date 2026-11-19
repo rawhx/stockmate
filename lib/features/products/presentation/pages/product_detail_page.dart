@@ -20,6 +20,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   String? _errorMessage;
   bool _isLoading = true;
   bool _isDeleting = false;
+  int _loadGeneration = 0;
 
   @override
   void initState() {
@@ -35,25 +36,29 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
   Future<void> _loadProduct() async {
     if (!mounted) return;
+    final generation = ++_loadGeneration;
+    final productId = widget.productId;
+    bool isCurrent() => mounted && generation == _loadGeneration;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      if (_product?.id != productId) _product = null;
     });
 
     try {
       final product = await context.read<ProductProvider>().getProductById(
-        widget.productId,
+        productId,
       );
-      if (!mounted) return;
+      if (!isCurrent()) return;
       setState(() => _product = product);
     } catch (_) {
-      if (!mounted) return;
+      if (!isCurrent()) return;
       setState(() {
         _product = null;
         _errorMessage = 'The product could not be loaded. Please try again.';
       });
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (isCurrent()) setState(() => _isLoading = false);
     }
   }
 
@@ -91,7 +96,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
   Future<void> _deleteProduct() async {
     final product = _product;
-    if (product == null || _isDeleting) return;
+    if (product == null || _isDeleting || _isLoading) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -111,12 +116,13 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         ],
       ),
     );
-    if (confirmed != true || !mounted) return;
+    if (confirmed != true || !mounted || widget.productId != product.id) return;
     setState(() => _isDeleting = true);
     final provider = context.read<ProductProvider>();
     final success = await provider.removeProduct(product.id);
     if (!mounted) return;
     setState(() => _isDeleting = false);
+    if (widget.productId != product.id) return;
     if (success) {
       context.go('/');
       ScaffoldMessenger.of(context)

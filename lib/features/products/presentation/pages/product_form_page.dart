@@ -38,6 +38,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
   String? _submitError;
   bool _isLoading = true;
   bool _isSaving = false;
+  int _loadGeneration = 0;
 
   @override
   void initState() {
@@ -67,20 +68,26 @@ class _ProductFormPageState extends State<ProductFormPage> {
   }
 
   Future<void> _loadForm() async {
+    if (!mounted) return;
+    final generation = ++_loadGeneration;
+    final productId = widget.productId;
+    bool isCurrent() => mounted && generation == _loadGeneration;
     setState(() {
       _isLoading = true;
       _loadError = null;
+      _submitError = null;
+      _isSaving = false;
     });
 
     try {
       final provider = context.read<ProductProvider>();
       final results = await Future.wait<Object?>([
         provider.getFormOptions(),
-        if (widget.isEditing) provider.getProductById(widget.productId!),
+        if (productId != null) provider.getProductById(productId),
       ]);
-      if (!mounted) return;
+      if (!isCurrent()) return;
       final options = results[0] as ProductFormOptions;
-      final product = widget.isEditing ? results[1] as Product? : null;
+      final product = productId != null ? results[1] as Product? : null;
       if (product != null &&
           (!options.categories.any((item) => item.id == product.categoryId) ||
               (product.supplierId != null &&
@@ -95,9 +102,20 @@ class _ProductFormPageState extends State<ProductFormPage> {
         _options = options;
         _originalProduct = product;
       });
-      if (product != null) _fillForm(product);
+      if (product != null) {
+        _fillForm(product);
+      } else {
+        _codeController.clear();
+        _nameController.clear();
+        _priceController.clear();
+        _unitController.clear();
+        _minimumStockController.text = '0';
+        _currentStockController.text = '0';
+        _categoryId = null;
+        _supplierId = null;
+      }
     } catch (error) {
-      if (!mounted) return;
+      if (!isCurrent()) return;
       setState(() {
         _originalProduct = null;
         _loadError = error is StateError
@@ -105,7 +123,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
             : 'The product form could not be loaded. Please try again.';
       });
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (isCurrent()) setState(() => _isLoading = false);
     }
   }
 
@@ -121,7 +139,8 @@ class _ProductFormPageState extends State<ProductFormPage> {
   }
 
   Future<void> _submit() async {
-    if (_isSaving || !_formKey.currentState!.validate()) return;
+    if (_isSaving || _formKey.currentState?.validate() != true) return;
+    final generation = _loadGeneration;
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _isSaving = true;
@@ -156,7 +175,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
     final success = widget.isEditing
         ? await provider.editProduct(product)
         : await provider.addProduct(product);
-    if (!mounted) return;
+    if (!mounted || generation != _loadGeneration) return;
 
     if (!success) {
       setState(() {
