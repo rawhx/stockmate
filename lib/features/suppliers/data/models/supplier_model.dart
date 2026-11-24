@@ -21,11 +21,32 @@ class SupplierModel {
     return SupplierModel(
       id: json['id'] as String? ?? '',
       name: json['name'] as String? ?? '',
-      contactPerson: json['contactPerson'] as String? ?? '',
-      phone: json['phone'] as String? ?? '',
-      email: json['email'] as String? ?? '',
-      address: json['address'] as String? ?? '',
+      // The remote table uses snake_case; mock data uses camelCase.
+      contactPerson: _string(json, 'contact_person', 'contactPerson'),
+      phone: _string(json, 'phone', 'phone'),
+      email: _string(json, 'email', 'email'),
+      address: _string(json, 'address', 'address'),
     );
+  }
+
+  static String _string(
+    Map<String, dynamic> json,
+    String snakeCase,
+    String camelCase,
+  ) {
+    return (json[snakeCase] ?? json[camelCase]) as String? ?? '';
+  }
+
+  /// Payload accepted by the `suppliers` table. The ID and owner are generated
+  /// by the database, so they are intentionally omitted here.
+  Map<String, dynamic> toWriteJson() {
+    return <String, dynamic>{
+      'name': name,
+      'contact_person': contactPerson,
+      'phone': phone,
+      'email': email,
+      'address': address,
+    };
   }
 
   Map<String, dynamic> toJson() {

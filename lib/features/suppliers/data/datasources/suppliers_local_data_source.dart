@@ -1,11 +1,8 @@
 import 'package:stockmate/features/suppliers/data/models/supplier_model.dart';
 
-abstract class SuppliersLocalDataSource {
-  Future<List<SupplierModel>> getSuppliers();
-  Future<SupplierModel> addSupplier(SupplierModel supplier);
-  Future<SupplierModel> updateSupplier(SupplierModel supplier);
-  Future<void> deleteSupplier(String id);
-}
+import 'suppliers_data_source.dart';
+
+abstract class SuppliersLocalDataSource implements SuppliersDataSource {}
 
 class SuppliersLocalDataSourceImpl implements SuppliersLocalDataSource {
   SuppliersLocalDataSourceImpl() {
