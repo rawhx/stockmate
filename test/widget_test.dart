@@ -10,6 +10,9 @@ import 'package:stockmate/features/auth/domain/entities/auth_user.dart';
 import 'package:stockmate/features/auth/domain/entities/sign_up_result.dart';
 import 'package:stockmate/features/auth/domain/errors/auth_failure.dart';
 
+import 'package:stockmate/features/suppliers/data/datasources/suppliers_local_data_source.dart';
+import 'package:stockmate/features/suppliers/data/repositories/suppliers_repository_impl.dart';
+
 import 'helpers/fake_auth_repository.dart';
 
 class _RestrictedProductSource extends ProductMockDataSource {
@@ -30,6 +33,9 @@ void main() {
         authRepository: repository,
         productRepository:
             products ?? ProductRepositoryImpl(ProductMockDataSource()),
+        suppliersRepository: SuppliersRepositoryImpl(
+          dataSource: SuppliersLocalDataSourceImpl(),
+        ),
         child: const StockMateApp(),
       ),
     );
