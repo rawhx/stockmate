@@ -153,28 +153,35 @@ class _CategoryFormPageState extends State<CategoryFormPage> {
           constraints: const BoxConstraints(maxWidth: 600),
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
-            child: Form(
-              key: _formKey,
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  CategoryFormHeader(isEditMode: isEditMode),
-                  const SizedBox(height: 16),
-                  CategoryFormFields(
-                    nameController: _nameController,
-                    descriptionController: _descriptionController,
+            child: Builder(
+              builder: (context) {
+                final categories = context.read<CategoryProvider>().categories;
+                return Form(
+                  key: _formKey,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      CategoryFormHeader(isEditMode: isEditMode),
+                      const SizedBox(height: 16),
+                      CategoryFormFields(
+                        nameController: _nameController,
+                        descriptionController: _descriptionController,
+                        existingCategories: categories,
+                        currentCategoryId: widget.categoryId,
+                      ),
+                      const SizedBox(height: 16),
+                      CategoryFormActions(
+                        isEditMode: isEditMode,
+                        isSaving: _isSaving,
+                        onSave: _saveCategory,
+                        onCancel: widget.onCancel,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  CategoryFormActions(
-                    isEditMode: isEditMode,
-                    isSaving: _isSaving,
-                    onSave: _saveCategory,
-                    onCancel: widget.onCancel,
-                  ),
-                  const SizedBox(height: 12),
-                ],
-              ),
+                );
+              },
             ),
           ),
         ),

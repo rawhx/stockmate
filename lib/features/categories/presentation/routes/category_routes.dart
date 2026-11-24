@@ -17,8 +17,16 @@ import '../pages/category_form_page.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+SupabaseClient? _getSupabaseClientSafely() {
+  try {
+    return Supabase.instance.client;
+  } catch (_) {
+    return null;
+  }
+}
+
 final CategorySupabaseDataSource _dataSource = CategorySupabaseDataSource(
-  Supabase.instance.client,
+  _getSupabaseClientSafely(),
 );
 
 final CategoryRepositoryImpl _repository = CategoryRepositoryImpl(_dataSource);

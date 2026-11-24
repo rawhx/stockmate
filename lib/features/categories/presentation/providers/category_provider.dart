@@ -56,6 +56,16 @@ class CategoryProvider extends ChangeNotifier {
 
   // CREATE
   Future<bool> createCategory(CategoryEntity category) async {
+    final nameLower = category.name.trim().toLowerCase();
+    final isDuplicate = _categories.any(
+      (c) => c.name.trim().toLowerCase() == nameLower,
+    );
+    if (isDuplicate) {
+      _errorMessage = 'Nama kategori "${category.name}" sudah ada';
+      notifyListeners();
+      return false;
+    }
+
     try {
       _errorMessage = null;
       await addCategory(category);
@@ -70,6 +80,16 @@ class CategoryProvider extends ChangeNotifier {
 
   // UPDATE
   Future<bool> editCategory(CategoryEntity category) async {
+    final nameLower = category.name.trim().toLowerCase();
+    final isDuplicate = _categories.any(
+      (c) => c.id != category.id && c.name.trim().toLowerCase() == nameLower,
+    );
+    if (isDuplicate) {
+      _errorMessage = 'Nama kategori "${category.name}" sudah ada';
+      notifyListeners();
+      return false;
+    }
+
     try {
       _errorMessage = null;
       await updateCategory(category);
