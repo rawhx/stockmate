@@ -28,6 +28,11 @@ import 'package:stockmate/features/stock_transactions/domain/usecases/get_stock_
 import 'package:stockmate/features/stock_transactions/domain/usecases/get_stock_transactions.dart';
 import 'package:stockmate/features/stock_transactions/domain/usecases/update_stock_transaction.dart';
 import 'package:stockmate/features/stock_transactions/presentation/providers/stock_transaction_provider.dart';
+import 'package:stockmate/features/suppliers/data/datasources/suppliers_remote_data_source.dart';
+import 'package:stockmate/features/suppliers/data/repositories/suppliers_repository_impl.dart';
+import 'package:stockmate/features/suppliers/domain/repositories/suppliers_repository.dart';
+import 'package:stockmate/features/suppliers/domain/usecases/supplier_usecases.dart';
+import 'package:stockmate/features/suppliers/presentation/providers/suppliers_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AppProviders extends StatelessWidget {
@@ -35,6 +40,7 @@ class AppProviders extends StatelessWidget {
     required this.child,
     this.authRepository,
     this.productRepository,
+    this.suppliersRepository,
     this.stockTransactionProvider,
     super.key,
   });
@@ -42,6 +48,7 @@ class AppProviders extends StatelessWidget {
   final Widget child;
   final AuthRepository? authRepository;
   final ProductRepository? productRepository;
+  final SuppliersRepository? suppliersRepository;
   final StockTransactionProvider? stockTransactionProvider;
 
   @override
@@ -93,6 +100,19 @@ class AppProviders extends StatelessWidget {
               (previous ?? _createProductProvider(context))
                 ..setOwner(auth.user?.id),
         ),
+        Provider<SuppliersRepository>(
+          create: (_) =>
+              suppliersRepository ??
+              SuppliersRepositoryImpl(
+                dataSource: SuppliersRemoteDataSource(Supabase.instance.client),
+              ),
+        ),
+        ChangeNotifierProxyProvider<AuthProvider, SuppliersProvider>(
+          create: _createSuppliersProvider,
+          update: (context, auth, previous) =>
+              (previous ?? _createSuppliersProvider(context))
+                ..setOwner(auth.user?.id),
+        ),
         ChangeNotifierProxyProvider<ProductProvider, StockTransactionProvider>(
           create: (context) {
             if (stockTransactionProvider != null) {
@@ -138,6 +158,16 @@ class AppProviders extends StatelessWidget {
       createProduct: CreateProduct(repository),
       updateProduct: UpdateProduct(repository),
       deleteProduct: DeleteProduct(repository),
+    );
+  }
+
+  SuppliersProvider _createSuppliersProvider(BuildContext context) {
+    final repository = context.read<SuppliersRepository>();
+    return SuppliersProvider(
+      getSuppliers: GetSuppliers(repository),
+      addSupplier: AddSupplier(repository),
+      updateSupplier: UpdateSupplier(repository),
+      deleteSupplier: DeleteSupplier(repository),
     );
   }
 }
