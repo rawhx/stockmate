@@ -3,15 +3,20 @@ import 'package:provider/provider.dart';
 
 import '../../domain/entities/category_entity.dart';
 import '../providers/category_provider.dart';
+import '../widgets/category_form_actions.dart';
+import '../widgets/category_form_fields.dart';
+import '../widgets/category_form_header.dart';
 
 class CategoryFormPage extends StatefulWidget {
   final String? categoryId;
+  final String? parentId;
   final VoidCallback onSaved;
   final VoidCallback onCancel;
 
   const CategoryFormPage({
     super.key,
     this.categoryId,
+    this.parentId,
     required this.onSaved,
     required this.onCancel,
   });
@@ -38,6 +43,7 @@ class _CategoryFormPageState extends State<CategoryFormPage> {
 
     if (_initialized) return;
     _initialized = true;
+    _parentId = widget.parentId;
 
     if (isEditMode) {
       final categories = context.read<CategoryProvider>().categories;
@@ -91,10 +97,12 @@ class _CategoryFormPageState extends State<CategoryFormPage> {
       );
     } else {
       category = CategoryEntity(
-        id: 'CAT-${now.microsecondsSinceEpoch}',
-        ownerId: 'dummy-user',
+        id: '',
+        ownerId: '',
         name: _nameController.text.trim(),
-        description: _descriptionController.text.trim(),
+        description: _descriptionController.text.trim().isEmpty
+            ? null
+            : _descriptionController.text.trim(),
         parentId: _parentId,
         createdAt: now,
         updatedAt: now,
@@ -122,15 +130,6 @@ class _CategoryFormPageState extends State<CategoryFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final categories = context.watch<CategoryProvider>().categories;
-
-    final parentOptions = categories
-        .where(
-          (category) =>
-              category.id != widget.categoryId && category.parentId == null,
-        )
-        .toList();
-
     if (isEditMode && _originalCategory == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Edit Kategori')),
@@ -154,193 +153,35 @@ class _CategoryFormPageState extends State<CategoryFormPage> {
           constraints: const BoxConstraints(maxWidth: 600),
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
-            child: Form(
-              key: _formKey,
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          CircleAvatar(
-                            radius: 24,
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.primaryContainer,
-                            foregroundColor: Theme.of(
-                              context,
-                            ).colorScheme.onPrimaryContainer,
-                            child: Icon(
-                              isEditMode
-                                  ? Icons.edit_outlined
-                                  : Icons.create_new_folder_outlined,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  isEditMode
-                                      ? 'Perbarui kategori'
-                                      : 'Buat kategori baru',
-                                  style: Theme.of(context).textTheme.titleLarge,
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  isEditMode
-                                      ? 'Ubah nama, deskripsi, atau kategori utamanya.'
-                                      : 'Kelompokkan produk agar lebih mudah ditemukan dan dikelola.',
-                                  style: Theme.of(context).textTheme.bodyMedium
-                                      ?.copyWith(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
-                                      ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+            child: Builder(
+              builder: (context) {
+                final categories = context.read<CategoryProvider>().categories;
+                return Form(
+                  key: _formKey,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      CategoryFormHeader(isEditMode: isEditMode),
+                      const SizedBox(height: 16),
+                      CategoryFormFields(
+                        nameController: _nameController,
+                        descriptionController: _descriptionController,
+                        existingCategories: categories,
+                        currentCategoryId: widget.categoryId,
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            'Informasi kategori',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 16),
-                          TextFormField(
-                            controller: _nameController,
-                            maxLength: 80,
-                            textCapitalization: TextCapitalization.words,
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              labelText: 'Nama kategori *',
-                              hintText: 'Contoh: Elektronik',
-                              helperText: 'Nama kategori wajib diisi.',
-                              prefixIcon: Icon(Icons.folder_outlined),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Nama kategori wajib diisi';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          TextFormField(
-                            controller: _descriptionController,
-                            maxLines: 3,
-                            maxLength: 240,
-                            textCapitalization: TextCapitalization.sentences,
-                            decoration: const InputDecoration(
-                              labelText: 'Deskripsi (opsional)',
-                              hintText: 'Jelaskan isi atau kegunaan kategori',
-                              alignLabelWithHint: true,
-                              prefixIcon: Icon(Icons.notes_outlined),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          DropdownButtonFormField<String>(
-                            initialValue: _parentId ?? '',
-                            isExpanded: true,
-                            decoration: const InputDecoration(
-                              labelText: 'Kategori utama (opsional)',
-                              helperText:
-                                  'Pilih kategori utama jika ini subkategori.',
-                              prefixIcon: Icon(Icons.account_tree_outlined),
-                            ),
-                            items: [
-                              const DropdownMenuItem<String>(
-                                value: '',
-                                child: Text('Jadikan kategori utama'),
-                              ),
-                              ...parentOptions.map(
-                                (category) => DropdownMenuItem<String>(
-                                  value: category.id,
-                                  child: Text(
-                                    category.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ),
-                            ],
-                            onChanged: (value) {
-                              setState(() {
-                                _parentId = value == null || value.isEmpty
-                                    ? null
-                                    : value;
-                              });
-                            },
-                          ),
-                        ],
+                      const SizedBox(height: 16),
+                      CategoryFormActions(
+                        isEditMode: isEditMode,
+                        isSaving: _isSaving,
+                        onSave: _saveCategory,
+                        onCancel: widget.onCancel,
                       ),
-                    ),
+                      const SizedBox(height: 12),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final saveButton = FilledButton.icon(
-                        onPressed: _isSaving ? null : _saveCategory,
-                        icon: _isSaving
-                            ? const SizedBox(
-                                height: 18,
-                                width: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.check),
-                        label: Text(
-                          _isSaving
-                              ? 'Menyimpan...'
-                              : isEditMode
-                              ? 'Simpan perubahan'
-                              : 'Simpan kategori',
-                        ),
-                      );
-                      final cancelButton = OutlinedButton(
-                        onPressed: _isSaving ? null : widget.onCancel,
-                        child: const Text('Batal'),
-                      );
-
-                      if (constraints.maxWidth < 380) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            saveButton,
-                            const SizedBox(height: 8),
-                            cancelButton,
-                          ],
-                        );
-                      }
-
-                      return Row(
-                        children: [
-                          Expanded(child: cancelButton),
-                          const SizedBox(width: 12),
-                          Expanded(child: saveButton),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                ],
-              ),
+                );
+              },
             ),
           ),
         ),
