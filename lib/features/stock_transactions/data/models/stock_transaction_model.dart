@@ -28,12 +28,26 @@ class StockTransactionModel extends StockTransaction {
     );
   }
 
-  factory StockTransactionModel.fromJson(Map<String, dynamic> json) {
+  factory StockTransactionModel.fromJson(
+    Map<String, dynamic> json, {
+    String? productName,
+    String? productCode,
+  }) {
+    final productData = json['products'] as Map<String, dynamic>?;
+    final resolvedName = productName ??
+        productData?['name'] as String? ??
+        json['product_name'] as String? ??
+        '';
+    final resolvedCode = productCode ??
+        productData?['code'] as String? ??
+        json['product_code'] as String? ??
+        '';
+
     return StockTransactionModel(
       id: json['id'] as String,
       productId: json['product_id'] as String,
-      productName: json['product_name'] as String,
-      productCode: json['product_code'] as String,
+      productName: resolvedName,
+      productCode: resolvedCode,
       type: TransactionType.fromString(json['type'] as String),
       quantity: (json['quantity'] as num).toInt(),
       date: DateTime.parse(json['date'] as String),
@@ -53,6 +67,17 @@ class StockTransactionModel extends StockTransaction {
       'date': date.toIso8601String(),
       'notes': notes,
       'created_at': createdAt.toIso8601String(),
+    };
+  }
+
+  Map<String, dynamic> toWriteJson() {
+    return {
+      if (id.isNotEmpty && !id.startsWith('tx-')) 'id': id,
+      'product_id': productId,
+      'type': type == TransactionType.inStock ? 'IN' : 'OUT',
+      'quantity': quantity,
+      'date': date.toIso8601String(),
+      if (notes != null) 'notes': notes,
     };
   }
 }

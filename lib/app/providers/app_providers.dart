@@ -20,8 +20,11 @@ import 'package:stockmate/features/products/domain/usecases/get_product_form_opt
 import 'package:stockmate/features/products/domain/usecases/get_products.dart';
 import 'package:stockmate/features/products/domain/usecases/update_product.dart';
 import 'package:stockmate/features/products/presentation/providers/product_provider.dart';
+import 'package:stockmate/features/stock_transactions/data/datasources/stock_transaction_data_source.dart';
 import 'package:stockmate/features/stock_transactions/data/datasources/stock_transaction_mock_data_source.dart';
+import 'package:stockmate/features/stock_transactions/data/datasources/stock_transaction_remote_data_source.dart';
 import 'package:stockmate/features/stock_transactions/data/repositories/stock_transaction_repository_impl.dart';
+import 'package:stockmate/features/stock_transactions/domain/repositories/stock_transaction_repository.dart';
 import 'package:stockmate/features/stock_transactions/domain/usecases/create_stock_transaction.dart';
 import 'package:stockmate/features/stock_transactions/domain/usecases/delete_stock_transaction.dart';
 import 'package:stockmate/features/stock_transactions/domain/usecases/get_stock_transaction.dart';
@@ -41,6 +44,7 @@ class AppProviders extends StatelessWidget {
     this.authRepository,
     this.productRepository,
     this.suppliersRepository,
+    this.stockTransactionRepository,
     this.stockTransactionProvider,
     super.key,
   });
@@ -49,7 +53,21 @@ class AppProviders extends StatelessWidget {
   final AuthRepository? authRepository;
   final ProductRepository? productRepository;
   final SuppliersRepository? suppliersRepository;
+  final StockTransactionRepository? stockTransactionRepository;
   final StockTransactionProvider? stockTransactionProvider;
+
+  static StockTransactionDataSource _createStockDataSource(
+    bool usesRemoteProducts,
+  ) {
+    if (!usesRemoteProducts) {
+      return StockTransactionMockDataSource();
+    }
+    try {
+      return StockTransactionRemoteDataSource(Supabase.instance.client);
+    } on Object catch (_) {
+      return StockTransactionMockDataSource();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,6 +76,18 @@ class AppProviders extends StatelessWidget {
         (productRepository is ProductRepositoryImpl &&
             (productRepository as ProductRepositoryImpl).dataSource
                 is ProductRemoteDataSource);
+
+    final resolvedStockRepo =
+        stockTransactionRepository ??
+        StockTransactionRepositoryImpl(
+          _createStockDataSource(usesRemoteProducts),
+        );
+
+    final isMockStockWithRemoteProducts =
+        usesRemoteProducts &&
+        resolvedStockRepo is StockTransactionRepositoryImpl &&
+        resolvedStockRepo.dataSource is StockTransactionMockDataSource;
+
     Future<Never> blockMockStockMutation(String _) async {
       throw StateError(
         'Transaksi stok belum tersedia untuk inventori akun ini.',
@@ -113,13 +143,19 @@ class AppProviders extends StatelessWidget {
               (previous ?? _createSuppliersProvider(context))
                 ..setOwner(auth.user?.id),
         ),
-        ChangeNotifierProxyProvider<ProductProvider, StockTransactionProvider>(
+        Provider<StockTransactionRepository>.value(
+          value: resolvedStockRepo,
+        ),
+        ChangeNotifierProxyProvider2<
+          AuthProvider,
+          ProductProvider,
+          StockTransactionProvider
+        >(
           create: (context) {
             if (stockTransactionProvider != null) {
               return stockTransactionProvider!;
             }
-            final ds = StockTransactionMockDataSource();
-            final repo = StockTransactionRepositoryImpl(ds);
+            final repo = context.read<StockTransactionRepository>();
             final productProvider = context.read<ProductProvider>();
             return StockTransactionProvider(
               getStockTransactions: GetStockTransactions(repo),
@@ -127,19 +163,27 @@ class AppProviders extends StatelessWidget {
               createStockTransaction: CreateStockTransaction(repo),
               updateStockTransaction: UpdateStockTransaction(repo),
               deleteStockTransaction: DeleteStockTransaction(repo),
-              onGetProduct: usesRemoteProducts
+              onGetProduct: isMockStockWithRemoteProducts
                   ? blockMockStockMutation
                   : productProvider.getProductById,
-              onUpdateProduct: productProvider.editProduct,
+              onUpdateProduct: usesRemoteProducts
+                  ? null
+                  : productProvider.editProduct,
+              onRefreshProducts: productProvider.fetchProducts,
             );
           },
-          update: (context, productProvider, currentStockTxProvider) {
+          update: (context, auth, productProvider, currentStockTxProvider) {
             if (currentStockTxProvider != null) {
-              currentStockTxProvider.onGetProduct = usesRemoteProducts
-                  ? blockMockStockMutation
-                  : productProvider.getProductById;
-              currentStockTxProvider.onUpdateProduct =
-                  productProvider.editProduct;
+              currentStockTxProvider.onGetProduct =
+                  isMockStockWithRemoteProducts
+                      ? blockMockStockMutation
+                      : productProvider.getProductById;
+              currentStockTxProvider.onUpdateProduct = usesRemoteProducts
+                  ? null
+                  : productProvider.editProduct;
+              currentStockTxProvider.onRefreshProducts =
+                  productProvider.fetchProducts;
+              currentStockTxProvider.setOwner(auth.user?.id);
             }
             return currentStockTxProvider!;
           },
