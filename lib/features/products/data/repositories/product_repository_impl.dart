@@ -1,12 +1,16 @@
 import '../../domain/entities/product.dart';
+import '../../domain/entities/product_form_options.dart';
 import '../../domain/repositories/product_repository.dart';
-import '../datasources/product_mock_data_source.dart';
+import '../datasources/product_data_source.dart';
 import '../models/product_model.dart';
 
 class ProductRepositoryImpl implements ProductRepository {
   ProductRepositoryImpl(this.dataSource);
 
-  final ProductMockDataSource dataSource;
+  final ProductDataSource dataSource;
+
+  @override
+  Future<ProductFormOptions> getFormOptions() => dataSource.getFormOptions();
 
   @override
   Future<List<Product>> getProducts() {

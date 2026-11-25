@@ -3,20 +3,32 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:stockmate/features/products/data/datasources/product_mock_data_source.dart';
+import 'package:stockmate/features/products/data/datasources/product_data_source.dart';
 import 'package:stockmate/features/products/data/repositories/product_repository_impl.dart';
+import 'package:stockmate/features/products/domain/entities/product_form_options.dart';
 import 'package:stockmate/features/products/domain/usecases/create_product.dart';
 import 'package:stockmate/features/products/domain/usecases/delete_product.dart';
 import 'package:stockmate/features/products/domain/usecases/get_product.dart';
+import 'package:stockmate/features/products/domain/usecases/get_product_form_options.dart';
 import 'package:stockmate/features/products/domain/usecases/get_products.dart';
 import 'package:stockmate/features/products/domain/usecases/update_product.dart';
 import 'package:stockmate/features/products/presentation/pages/product_form_page.dart';
 import 'package:stockmate/features/products/presentation/providers/product_provider.dart';
 
+class _NoCategoriesSource extends ProductMockDataSource {
+  @override
+  Future<ProductFormOptions> getFormOptions() async =>
+      const ProductFormOptions(categories: [], suppliers: []);
+}
+
 void main() {
-  ProductProvider createProvider() {
-    final repository = ProductRepositoryImpl(ProductMockDataSource());
+  ProductProvider createProvider([ProductDataSource? dataSource]) {
+    final repository = ProductRepositoryImpl(
+      dataSource ?? ProductMockDataSource(),
+    );
     return ProductProvider(
       getProducts: GetProducts(repository),
+      getFormOptions: GetProductFormOptions(repository),
       getProduct: GetProduct(repository),
       createProduct: CreateProduct(repository),
       updateProduct: UpdateProduct(repository),
@@ -27,12 +39,13 @@ void main() {
   Future<({GoRouter router, ProductProvider provider})> pumpForm(
     WidgetTester tester, {
     String? productId,
+    ProductDataSource? dataSource,
     Size size = const Size(390, 844),
   }) async {
     await tester.binding.setSurfaceSize(size);
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final provider = createProvider();
+    final provider = createProvider(dataSource);
     final formPath = productId == null ? '/form' : '/form/$productId';
     final router = GoRouter(
       initialLocation: formPath,
@@ -58,7 +71,7 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
     return (router: router, provider: provider);
   }
 
@@ -86,22 +99,37 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
   }
 
+  Future<void> selectOption(
+    WidgetTester tester,
+    String key,
+    String name,
+  ) async {
+    final field = find.byKey(Key(key));
+    await tester.ensureVisible(field);
+    await tester.tap(field);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(name).last);
+    await tester.pumpAndSettle();
+  }
+
   testWidgets('creates a product with valid form values', (tester) async {
     final setup = await pumpForm(tester);
 
     await enterText(tester, const Key('product_code'), 'PRD-004');
     await enterText(tester, const Key('product_name'), 'Brown Sugar');
-    await enterText(tester, const Key('product_category'), 'Food');
+    await selectOption(tester, 'product_category', 'Food');
     await enterText(tester, const Key('product_unit'), 'pack');
     await enterText(tester, const Key('product_price'), '15000');
-    await enterText(tester, const Key('product_current_stock'), '20');
     await enterText(tester, const Key('product_minimum_stock'), '5');
-    await enterText(tester, const Key('product_supplier'), 'Sweet Supply');
+    await selectOption(tester, 'product_supplier', 'PT Sumber Pangan');
 
     await tapSubmit(tester);
 
     expect(setup.provider.products, hasLength(4));
     expect(setup.provider.products.last.name, 'Brown Sugar');
+    expect(setup.provider.products.last.categoryId, 'cat-1');
+    expect(setup.provider.products.last.supplierId, 'sup-1');
+    expect(setup.provider.products.last.currentStock, 0);
   });
 
   testWidgets('loads and updates an existing product', (tester) async {
@@ -121,6 +149,53 @@ void main() {
       (product) => product.id == '1',
     );
     expect(updated.name, 'Beras Organik');
+    expect(updated.currentStock, 25);
+  });
+
+  testWidgets(
+    'supplier can be cleared while category uses a selected identifier',
+    (tester) async {
+      final setup = await pumpForm(tester, productId: '1');
+      await selectOption(tester, 'product_category', 'Beverage');
+      await selectOption(tester, 'product_supplier', 'No supplier');
+      await tapSubmit(tester);
+      final updated = setup.provider.products.firstWhere(
+        (product) => product.id == '1',
+      );
+      expect(updated.categoryId, 'cat-2');
+      expect(updated.supplierId, isNull);
+      expect(updated.supplierName, isNull);
+      expect(updated.currentStock, 25);
+    },
+  );
+
+  testWidgets(
+    'current stock is read-only and defaults to zero for new products',
+    (tester) async {
+      await pumpForm(tester);
+      final field = tester.widget<TextField>(
+        find.descendant(
+          of: find.byKey(const Key('product_current_stock')),
+          matching: find.byType(TextField),
+        ),
+      );
+      expect(field.readOnly, isTrue);
+      expect(field.controller!.text, '0');
+    },
+  );
+
+  testWidgets('account without categories cannot submit a product', (
+    tester,
+  ) async {
+    await pumpForm(tester, dataSource: _NoCategoriesSource());
+    final submit = tester.widget<FilledButton>(
+      find.byKey(const Key('product_submit')),
+    );
+    expect(submit.onPressed, isNull);
+    expect(
+      find.text('No categories available for this account.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('validates required fields before creating a product', (

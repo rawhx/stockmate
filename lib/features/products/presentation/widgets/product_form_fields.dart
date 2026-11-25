@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import '../../domain/entities/product_form_options.dart';
+
 import 'package:stockmate/features/products/presentation/widgets/product_form_validators.dart';
 
 class ProductFormFields extends StatelessWidget {
@@ -8,8 +11,11 @@ class ProductFormFields extends StatelessWidget {
     required this.nameController,
     required this.priceController,
     required this.unitController,
-    required this.categoryController,
-    required this.supplierController,
+    required this.options,
+    required this.categoryId,
+    required this.supplierId,
+    required this.onCategoryChanged,
+    required this.onSupplierChanged,
     required this.minimumStockController,
     required this.currentStockController,
     required this.isEditing,
@@ -23,8 +29,11 @@ class ProductFormFields extends StatelessWidget {
   final TextEditingController nameController;
   final TextEditingController priceController;
   final TextEditingController unitController;
-  final TextEditingController categoryController;
-  final TextEditingController supplierController;
+  final ProductFormOptions options;
+  final String? categoryId;
+  final String? supplierId;
+  final ValueChanged<String?> onCategoryChanged;
+  final ValueChanged<String?> onSupplierChanged;
   final TextEditingController minimumStockController;
   final TextEditingController currentStockController;
   final bool isEditing;
@@ -103,16 +112,30 @@ class ProductFormFields extends StatelessWidget {
               return _ResponsiveFields(
                 isHorizontal: constraints.maxWidth >= 620,
                 children: [
-                  TextFormField(
+                  DropdownButtonFormField<String>(
                     key: const Key('product_category'),
-                    controller: categoryController,
-                    enabled: !isSaving,
-                    textCapitalization: TextCapitalization.words,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
+                    initialValue: categoryId,
+                    isExpanded: true,
+                    items: options.categories
+                        .map(
+                          (category) => DropdownMenuItem(
+                            value: category.id,
+                            child: Text(
+                              category.name,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: isSaving ? null : onCategoryChanged,
+                    decoration: InputDecoration(
                       labelText: 'Category',
-                      hintText: 'Food',
-                      prefixIcon: Icon(Icons.category_outlined),
+                      hintText: 'Select a category',
+                      helperText: options.categories.isEmpty
+                          ? 'No categories available for this account.'
+                          : null,
+                      helperMaxLines: 3,
+                      prefixIcon: const Icon(Icons.category_outlined),
                     ),
                     validator: (value) =>
                         ProductFormValidators.requiredText(value, 'Category'),
@@ -166,18 +189,13 @@ class ProductFormFields extends StatelessWidget {
                     key: const Key('product_current_stock'),
                     controller: currentStockController,
                     enabled: !isSaving,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    textInputAction: TextInputAction.next,
+                    readOnly: true,
                     decoration: const InputDecoration(
                       labelText: 'Current stock',
+                      helperText: 'Calculated from stock transactions',
+                      helperMaxLines: 2,
                       prefixIcon: Icon(Icons.inventory_outlined),
                     ),
-                    validator: (value) =>
-                        ProductFormValidators.nonNegativeStock(
-                          value,
-                          'Current stock',
-                        ),
                   ),
                   TextFormField(
                     key: const Key('product_minimum_stock'),
@@ -205,24 +223,33 @@ class ProductFormFields extends StatelessWidget {
         _FormSection(
           title: 'Supplier',
           icon: Icons.local_shipping_outlined,
-          child: TextFormField(
+          child: DropdownButtonFormField<String>(
             key: const Key('product_supplier'),
-            controller: supplierController,
-            enabled: !isSaving,
-            textCapitalization: TextCapitalization.words,
-            textInputAction: TextInputAction.done,
+            initialValue: supplierId ?? '',
+            isExpanded: true,
+            items: [
+              const DropdownMenuItem(value: '', child: Text('No supplier')),
+              ...options.suppliers.map(
+                (supplier) => DropdownMenuItem(
+                  value: supplier.id,
+                  child: Text(supplier.name, overflow: TextOverflow.ellipsis),
+                ),
+              ),
+            ],
+            onChanged: isSaving
+                ? null
+                : (value) => onSupplierChanged(value == '' ? null : value),
             decoration: const InputDecoration(
               labelText: 'Supplier name (optional)',
-              hintText: 'PT Sumber Pangan',
+              hintText: 'Select a supplier',
               prefixIcon: Icon(Icons.business_outlined),
             ),
-            onFieldSubmitted: isSaving ? null : (_) => onSubmit(),
           ),
         ),
         const SizedBox(height: 24),
         FilledButton.icon(
           key: const Key('product_submit'),
-          onPressed: isSaving ? null : onSubmit,
+          onPressed: isSaving || options.categories.isEmpty ? null : onSubmit,
           icon: isSaving
               ? const SizedBox.square(
                   dimension: 18,

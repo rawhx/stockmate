@@ -7,7 +7,7 @@ abstract final class ProductFormValidators {
   static String? positivePrice(String? value) {
     if (value == null || value.trim().isEmpty) return 'Price is required.';
     final price = double.tryParse(value.trim());
-    if (price == null) return 'Enter a valid price.';
+    if (price == null || !price.isFinite) return 'Enter a valid price.';
     if (price <= 0) return 'Price must be greater than zero.';
     return null;
   }

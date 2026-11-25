@@ -3,19 +3,41 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:stockmate/app/app.dart';
 import 'package:stockmate/app/providers/app_providers.dart';
+import 'package:stockmate/features/products/data/datasources/product_mock_data_source.dart';
+import 'package:stockmate/features/products/data/repositories/product_repository_impl.dart';
+import 'package:stockmate/features/products/domain/repositories/product_repository.dart';
 import 'package:stockmate/features/auth/domain/entities/auth_user.dart';
 import 'package:stockmate/features/auth/domain/entities/sign_up_result.dart';
 import 'package:stockmate/features/auth/domain/errors/auth_failure.dart';
 
+import 'package:stockmate/features/suppliers/data/datasources/suppliers_local_data_source.dart';
+import 'package:stockmate/features/suppliers/data/repositories/suppliers_repository_impl.dart';
+
 import 'helpers/fake_auth_repository.dart';
+
+class _RestrictedProductSource extends ProductMockDataSource {
+  @override
+  Future<void> deleteProduct(String id) async {
+    throw StateError('Product has stock transactions.');
+  }
+}
 
 void main() {
   Future<void> pumpApp(
     WidgetTester tester,
-    FakeAuthRepository repository,
-  ) async {
+    FakeAuthRepository repository, {
+    ProductRepository? products,
+  }) async {
     await tester.pumpWidget(
-      AppProviders(authRepository: repository, child: const StockMateApp()),
+      AppProviders(
+        authRepository: repository,
+        productRepository:
+            products ?? ProductRepositoryImpl(ProductMockDataSource()),
+        suppliersRepository: SuppliersRepositoryImpl(
+          dataSource: SuppliersLocalDataSourceImpl(),
+        ),
+        child: const StockMateApp(),
+      ),
     );
     await tester.pumpAndSettle();
   }
@@ -191,6 +213,93 @@ void main() {
 
     expect(find.text('Email is required.'), findsOneWidget);
     expect(find.text('Password is required.'), findsOneWidget);
+  });
+
+  testWidgets(
+    'deleting a product requires confirmation and returns to the list',
+    (tester) async {
+      final repository = FakeAuthRepository(
+        currentUser: const AuthUser(id: 'user-id', email: 'user@example.com'),
+      );
+      addTearDown(repository.dispose);
+      await pumpApp(tester, repository);
+      await tester.tap(find.text('Beras Premium'));
+      await tester.pumpAndSettle();
+      final button = find.byKey(const Key('product_delete'));
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.text('Product details'), findsOneWidget);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Products'),
+        findsOneWidget,
+        reason: tester
+            .widgetList<Text>(find.byType(Text))
+            .map((text) => text.data)
+            .join(' | '),
+      );
+      expect(find.text('Beras Premium'), findsNothing);
+      expect(find.text('Product deleted.'), findsOneWidget);
+    },
+  );
+
+  testWidgets('restricted delete displays error and keeps product details', (
+    tester,
+  ) async {
+    final repository = FakeAuthRepository(
+      currentUser: const AuthUser(id: 'user-id', email: 'user@example.com'),
+    );
+    addTearDown(repository.dispose);
+    await pumpApp(
+      tester,
+      repository,
+      products: ProductRepositoryImpl(_RestrictedProductSource()),
+    );
+    await tester.tap(find.text('Beras Premium'));
+    await tester.pumpAndSettle();
+    final button = find.byKey(const Key('product_delete'));
+    await tester.ensureVisible(button);
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+    expect(find.text('Product details'), findsOneWidget);
+    expect(find.text('Product has stock transactions.'), findsOneWidget);
+  });
+
+  testWidgets('switching accounts closes the previous product form', (
+    tester,
+  ) async {
+    final repository = FakeAuthRepository(
+      currentUser: const AuthUser(id: 'account-a', email: 'a@example.com'),
+    );
+    addTearDown(repository.dispose);
+    await pumpApp(tester, repository);
+    await tester.tap(find.text('Beras Premium'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Edit product'));
+    await tester.pumpAndSettle();
+    expect(find.text('Edit product'), findsOneWidget);
+
+    repository.emitAuthState(
+      const AuthUser(id: 'account-b', email: 'b@example.com'),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Products'),
+      findsOneWidget,
+      reason: tester
+          .widgetList<Text>(find.byType(Text))
+          .map((text) => text.data)
+          .join(' | '),
+    );
+    expect(find.text('Edit product'), findsNothing);
   });
 
   testWidgets('successful login opens the protected root page', (tester) async {

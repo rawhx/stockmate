@@ -19,6 +19,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   Product? _product;
   String? _errorMessage;
   bool _isLoading = true;
+  bool _isDeleting = false;
+  int _loadGeneration = 0;
 
   @override
   void initState() {
@@ -34,25 +36,29 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
   Future<void> _loadProduct() async {
     if (!mounted) return;
+    final generation = ++_loadGeneration;
+    final productId = widget.productId;
+    bool isCurrent() => mounted && generation == _loadGeneration;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      if (_product?.id != productId) _product = null;
     });
 
     try {
       final product = await context.read<ProductProvider>().getProductById(
-        widget.productId,
+        productId,
       );
-      if (!mounted) return;
+      if (!isCurrent()) return;
       setState(() => _product = product);
     } catch (_) {
-      if (!mounted) return;
+      if (!isCurrent()) return;
       setState(() {
         _product = null;
         _errorMessage = 'The product could not be loaded. Please try again.';
       });
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (isCurrent()) setState(() => _isLoading = false);
     }
   }
 
@@ -63,12 +69,14 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         title: const Text('Product details'),
         actions: [
           IconButton(
-            onPressed: _isLoading || _product == null ? null : _editProduct,
+            onPressed: _isLoading || _isDeleting || _product == null
+                ? null
+                : _editProduct,
             tooltip: 'Edit product',
             icon: const Icon(Icons.edit_outlined),
           ),
           IconButton(
-            onPressed: _isLoading ? null : _loadProduct,
+            onPressed: _isLoading || _isDeleting ? null : _loadProduct,
             tooltip: 'Refresh product',
             icon: const Icon(Icons.refresh),
           ),
@@ -84,6 +92,50 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     if (product == null) return;
     final updated = await context.push<bool>('/products/${product.id}/edit');
     if (updated == true && mounted) await _loadProduct();
+  }
+
+  Future<void> _deleteProduct() async {
+    final product = _product;
+    if (product == null || _isDeleting || _isLoading) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete product?'),
+        content: Text(
+          'Delete "${product.name}"? Products with stock transactions cannot be deleted.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted || widget.productId != product.id) return;
+    setState(() => _isDeleting = true);
+    final provider = context.read<ProductProvider>();
+    final success = await provider.removeProduct(product.id);
+    if (!mounted) return;
+    setState(() => _isDeleting = false);
+    if (widget.productId != product.id) return;
+    if (success) {
+      context.go('/');
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Product deleted.')));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            provider.errorMessage ?? 'The product could not be deleted.',
+          ),
+        ),
+      );
+    }
   }
 
   Widget _buildBody() {
@@ -144,6 +196,20 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         ],
                       );
                     },
+                  ),
+                  const SizedBox(height: 24),
+                  OutlinedButton.icon(
+                    key: const Key('product_delete'),
+                    onPressed: _isLoading || _isDeleting
+                        ? null
+                        : _deleteProduct,
+                    icon: _isDeleting
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.delete_outline),
+                    label: Text(_isDeleting ? 'Deleting...' : 'Delete product'),
                   ),
                 ],
               ),

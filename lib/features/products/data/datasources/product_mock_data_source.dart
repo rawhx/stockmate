@@ -1,6 +1,31 @@
-import '../models/product_model.dart';
+import 'package:stockmate/features/products/data/datasources/product_data_source.dart';
 
-class ProductMockDataSource {
+import '../models/product_model.dart';
+import '../../domain/entities/product_form_options.dart';
+
+class ProductMockDataSource implements ProductDataSource {
+  @override
+  Future<ProductFormOptions> getFormOptions() async {
+    final categories = <String, ProductOption>{};
+    final suppliers = <String, ProductOption>{};
+    for (final product in _products) {
+      categories[product.categoryId] = ProductOption(
+        id: product.categoryId,
+        name: product.categoryName,
+      );
+      if (product.supplierId != null) {
+        suppliers[product.supplierId!] = ProductOption(
+          id: product.supplierId!,
+          name: product.supplierName ?? '',
+        );
+      }
+    }
+    return ProductFormOptions(
+      categories: categories.values.toList(),
+      suppliers: suppliers.values.toList(),
+    );
+  }
+
   final List<ProductModel> _products = [
     const ProductModel(
       id: '1',
@@ -43,12 +68,14 @@ class ProductMockDataSource {
     ),
   ];
 
+  @override
   Future<List<ProductModel>> getProducts() async {
     await Future<void>.delayed(const Duration(milliseconds: 300));
 
     return List.unmodifiable(_products);
   }
 
+  @override
   Future<ProductModel?> getProduct(String id) async {
     await Future<void>.delayed(const Duration(milliseconds: 150));
 
@@ -61,12 +88,14 @@ class ProductMockDataSource {
     return null;
   }
 
+  @override
   Future<void> createProduct(ProductModel product) async {
     await Future<void>.delayed(const Duration(milliseconds: 200));
 
     _products.add(product);
   }
 
+  @override
   Future<void> updateProduct(ProductModel product) async {
     await Future<void>.delayed(const Duration(milliseconds: 200));
 
@@ -79,6 +108,7 @@ class ProductMockDataSource {
     _products[index] = product;
   }
 
+  @override
   Future<void> deleteProduct(String id) async {
     await Future<void>.delayed(const Duration(milliseconds: 200));
 

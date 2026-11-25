@@ -6,6 +6,7 @@ import 'package:stockmate/features/products/data/repositories/product_repository
 import 'package:stockmate/features/products/domain/usecases/create_product.dart';
 import 'package:stockmate/features/products/domain/usecases/delete_product.dart';
 import 'package:stockmate/features/products/domain/usecases/get_product.dart';
+import 'package:stockmate/features/products/domain/usecases/get_product_form_options.dart';
 import 'package:stockmate/features/products/domain/usecases/get_products.dart';
 import 'package:stockmate/features/products/domain/usecases/update_product.dart';
 import 'package:stockmate/features/products/presentation/providers/product_provider.dart';
@@ -29,6 +30,7 @@ void main() {
     final prodRepo = ProductRepositoryImpl(ProductMockDataSource());
     productProvider = ProductProvider(
       getProducts: GetProducts(prodRepo),
+      getFormOptions: GetProductFormOptions(prodRepo),
       getProduct: GetProduct(prodRepo),
       createProduct: CreateProduct(prodRepo),
       updateProduct: UpdateProduct(prodRepo),
