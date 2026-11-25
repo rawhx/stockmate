@@ -2,14 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../domain/entities/category_entity.dart';
-import '../mock/category_products.dart';
+import '../../../products/domain/entities/product.dart';
+import '../../../products/presentation/providers/product_provider.dart';
+import '../widgets/category_detail_header.dart';
+import '../widgets/category_product_picker_dialog.dart';
+import '../widgets/category_products_section.dart';
 import '../providers/category_provider.dart';
-import '../widgets/product_image.dart';
+import '../widgets/subcategory_tile.dart';
 
 class CategoryDetailPage extends StatelessWidget {
   final String categoryId;
   final VoidCallback onEdit;
   final VoidCallback onBack;
+  final VoidCallback onAddSubcategory;
   final ValueChanged<String> onOpenSubcategory;
 
   const CategoryDetailPage({
@@ -17,115 +22,52 @@ class CategoryDetailPage extends StatelessWidget {
     required this.categoryId,
     required this.onEdit,
     required this.onBack,
+    required this.onAddSubcategory,
     required this.onOpenSubcategory,
   });
 
-  Future<void> _showAddProduct(
+  Future<void> _showSelectProduct(
     BuildContext context, {
     required String targetCategoryId,
     required String targetCategoryName,
   }) async {
-    final formKey = GlobalKey<FormState>();
-    final nameController = TextEditingController();
-    final codeController = TextEditingController();
-    final priceController = TextEditingController();
+    final productProvider = context.read<ProductProvider>();
+    await productProvider.fetchProducts();
 
-    try {
-      final product = await showDialog<CategoryProduct>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: Text('Tambah Produk ke $targetCategoryName'),
-          content: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: nameController,
-                    autofocus: true,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: const InputDecoration(
-                      labelText: 'Nama produk',
-                      prefixIcon: Icon(Icons.inventory_2_outlined),
-                    ),
-                    validator: (value) => value == null || value.trim().isEmpty
-                        ? 'Nama produk wajib diisi'
-                        : null,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: codeController,
-                    textCapitalization: TextCapitalization.characters,
-                    decoration: const InputDecoration(
-                      labelText: 'Kode produk',
-                      prefixIcon: Icon(Icons.qr_code_2_outlined),
-                    ),
-                    validator: (value) => value == null || value.trim().isEmpty
-                        ? 'Kode produk wajib diisi'
-                        : null,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: priceController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Harga',
-                      prefixText: 'Rp ',
-                      prefixIcon: Icon(Icons.payments_outlined),
-                    ),
-                    validator: (value) {
-                      final price = double.tryParse(
-                        (value ?? '').trim().replaceAll(',', '.'),
-                      );
-                      if (price == null || price <= 0) {
-                        return 'Masukkan harga lebih dari 0';
-                      }
-                      return null;
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Batal'),
-            ),
-            FilledButton.icon(
-              onPressed: () {
-                if (!formKey.currentState!.validate()) return;
-                Navigator.pop(
-                  dialogContext,
-                  CategoryProduct(
-                    code: codeController.text.trim(),
-                    name: nameController.text.trim(),
-                    price: double.parse(
-                      priceController.text.trim().replaceAll(',', '.'),
-                    ),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Tambah'),
-            ),
-          ],
-        ),
-      );
+    if (!context.mounted) return;
 
-      if (product == null || !context.mounted) return;
-      CategoryProductMockStore.instance.addProduct(targetCategoryId, product);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Produk berhasil ditambahkan')),
-      );
-    } finally {
-      nameController.dispose();
-      codeController.dispose();
-      priceController.dispose();
+    final selectedProducts = await showDialog<List<Product>>(
+      context: context,
+      builder: (_) =>
+          CategoryProductPickerDialog(categoryName: targetCategoryName),
+    );
+
+    if (selectedProducts == null ||
+        selectedProducts.isEmpty ||
+        !context.mounted) {
+      return;
     }
+
+    var success = true;
+    for (final product in selectedProducts) {
+      final updatedProduct = product.copyWith(
+        categoryId: targetCategoryId,
+        categoryName: targetCategoryName,
+      );
+      success = await productProvider.editProduct(updatedProduct) && success;
+    }
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? '${selectedProducts.length} produk berhasil ditambahkan ke kategori'
+              : productProvider.errorMessage ?? 'Gagal menambahkan produk',
+        ),
+      ),
+    );
   }
 
   Future<void> _deleteCategory(
@@ -199,6 +141,11 @@ class CategoryDetailPage extends StatelessWidget {
     final subcategories = provider.categories
         .where((item) => item.parentId == categoryId)
         .toList();
+    final products = context
+        .watch<ProductProvider>()
+        .products
+        .where((product) => product.categoryId == categoryId)
+        .toList();
     CategoryEntity? parentCategory;
     if (selectedCategory.parentId != null) {
       for (final item in provider.categories) {
@@ -218,9 +165,22 @@ class CategoryDetailPage extends StatelessWidget {
           onPressed: onBack,
         ),
         title: const Text('Detail Kategori'),
+        actions: [
+          IconButton(
+            tooltip: 'Edit kategori',
+            onPressed: onEdit,
+            icon: const Icon(Icons.edit_outlined),
+          ),
+          IconButton(
+            tooltip: 'Hapus kategori',
+            onPressed: () => _deleteCategory(context, provider),
+            icon: const Icon(Icons.delete_outline),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddProduct(
+        onPressed: () => _showSelectProduct(
           context,
           targetCategoryId: selectedCategory.id,
           targetCategoryName: selectedCategory.name,
@@ -231,240 +191,62 @@ class CategoryDetailPage extends StatelessWidget {
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 650),
-          child: ListenableBuilder(
-            listenable: CategoryProductMockStore.instance,
-            builder: (context, _) {
-              final products = CategoryProductMockStore.instance.productsFor(
-                selectedCategory.id,
-              );
-
-              return ListView(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 96),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 96),
+            children: [
+              CategoryDetailHeader(
+                category: selectedCategory,
+                parentCategory: parentCategory,
+              ),
+              const SizedBox(height: 24),
+              Row(
                 children: [
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 24,
-                                backgroundColor: Theme.of(
-                                  context,
-                                ).colorScheme.primaryContainer,
-                                foregroundColor: Theme.of(
-                                  context,
-                                ).colorScheme.onPrimaryContainer,
-                                child: const Icon(Icons.folder_outlined),
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Text(
-                                  selectedCategory.name,
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.headlineSmall,
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (parentCategory != null) ...[
-                            const SizedBox(height: 12),
-                            Chip(
-                              avatar: const Icon(Icons.folder_open_outlined),
-                              label: Text('Bagian dari ${parentCategory.name}'),
-                              visualDensity: VisualDensity.compact,
-                            ),
-                          ],
-                          const SizedBox(height: 16),
-                          Text(
-                            'Deskripsi',
-                            style: Theme.of(context).textTheme.labelLarge,
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            selectedCategory.description?.isNotEmpty == true
-                                ? selectedCategory.description!
-                                : 'Tidak ada deskripsi',
-                            style: Theme.of(context).textTheme.bodyLarge,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (subcategories.isNotEmpty) ...[
-                    const SizedBox(height: 24),
-                    Text(
+                  Expanded(
+                    child: Text(
                       'Subkategori',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    const SizedBox(height: 8),
-                    for (final subcategory in subcategories)
-                      _buildSubcategoryTile(context, subcategory),
-                  ],
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Produk dalam kategori ini',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ),
-                      Chip(
-                        label: Text('${products.length}'),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ],
                   ),
-                  const SizedBox(height: 8),
-                  if (products.isEmpty)
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.inventory_2_outlined,
-                              size: 36,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                            ),
-                            const SizedBox(height: 8),
-                            const Text('Belum ada produk di kategori ini.'),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Tambahkan produk pertama menggunakan tombol di bawah.',
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    for (final product in products)
-                      Card(
-                        child: ListTile(
-                          leading: ProductImage(
-                            productName: product.name,
-                            imageUrl: product.imageUrl,
-                          ),
-                          title: Text(product.name),
-                          subtitle: Text(product.code),
-                          trailing: Text(
-                            'Rp ${product.price.toStringAsFixed(0)}',
-                            style: Theme.of(context).textTheme.labelLarge,
-                          ),
-                        ),
-                      ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: onEdit,
-                          icon: const Icon(Icons.edit_outlined),
-                          label: const Text('Edit'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _deleteCategory(context, provider),
-                          icon: const Icon(Icons.delete_outline),
-                          label: const Text('Hapus'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Theme.of(
-                              context,
-                            ).colorScheme.error,
-                          ),
-                        ),
-                      ),
-                    ],
+                  TextButton.icon(
+                    onPressed: onAddSubcategory,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Tambah'),
                   ),
                 ],
-              );
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSubcategoryTile(
-    BuildContext context,
-    CategoryEntity subcategory,
-  ) {
-    var isExpanded = false;
-
-    return StatefulBuilder(
-      builder: (tileContext, setTileState) {
-        final subcategoryProducts = CategoryProductMockStore.instance
-            .productsFor(subcategory.id);
-
-        return Card(
-          clipBehavior: Clip.antiAlias,
-          child: ExpansionTile(
-            leading: const Icon(Icons.subdirectory_arrow_right),
-            title: Text(subcategory.name),
-            subtitle: Text('${subcategoryProducts.length} produk'),
-            onExpansionChanged: (expanded) =>
-                setTileState(() => isExpanded = expanded),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  tooltip: 'Lihat detail ${subcategory.name}',
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.open_in_new_outlined, size: 19),
-                  onPressed: () => onOpenSubcategory(subcategory.id),
-                ),
-                AnimatedRotation(
-                  turns: isExpanded ? 0.25 : 0,
-                  duration: const Duration(milliseconds: 180),
-                  child: const Icon(Icons.chevron_right),
-                ),
-              ],
-            ),
-            children: [
-              ...subcategoryProducts.map(
-                (product) => ListTile(
-                  contentPadding: const EdgeInsets.only(left: 56, right: 16),
-                  leading: const Icon(Icons.inventory_2_outlined),
-                  title: Text(product.name),
-                  subtitle: Text(
-                    '${product.code}  |  Rp ${product.price.toStringAsFixed(0)}',
-                  ),
-                ),
               ),
-              if (subcategoryProducts.isEmpty)
-                const ListTile(
-                  contentPadding: EdgeInsets.only(left: 56, right: 16),
-                  title: Text('Belum ada produk pada subkategori ini.'),
-                ),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 48, bottom: 8),
-                  child: TextButton.icon(
-                    onPressed: () => _showAddProduct(
+              if (subcategories.isEmpty)
+                const Card(
+                  child: ListTile(
+                    leading: Icon(Icons.account_tree_outlined),
+                    title: Text('Belum ada subkategori.'),
+                  ),
+                )
+              else ...[
+                const SizedBox(height: 8),
+                for (final subcategory in subcategories)
+                  SubcategoryTile(
+                    category: subcategory,
+                    products: context
+                        .read<ProductProvider>()
+                        .products
+                        .where(
+                          (product) => product.categoryId == subcategory.id,
+                        )
+                        .toList(),
+                    onOpen: () => onOpenSubcategory(subcategory.id),
+                    onAddProduct: () => _showSelectProduct(
                       context,
                       targetCategoryId: subcategory.id,
                       targetCategoryName: subcategory.name,
                     ),
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Tambah produk'),
                   ),
-                ),
-              ),
+              ],
+              const SizedBox(height: 24),
+              CategoryProductsSection(products: products),
             ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
