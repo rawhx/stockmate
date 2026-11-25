@@ -244,4 +244,26 @@ void main() {
       )),
     );
   });
+
+  test('handles schema cache error from PostgREST with helpful message', () async {
+    handler = (req) => http.Response(
+          jsonEncode({
+            'code': 'PGRST204',
+            'message': "could not find the 'date' column of 'stock_transaction' in the schema cache",
+            'details': null,
+            'hint': null,
+          }),
+          400,
+          headers: {'content-type': 'application/json'},
+        );
+
+    expect(
+      () => source.getTransactions(),
+      throwsA(isA<StateError>().having(
+        (e) => e.message,
+        'message',
+        contains('stock_transactions'),
+      )),
+    );
+  });
 }

@@ -30,6 +30,13 @@ class StockTransactionRemoteDataSource implements StockTransactionDataSource {
     if (code == '42501') {
       throw StateError('Akses ditolak. Periksa autentikasi Anda.');
     }
+    if (error.message.contains('schema cache') || code == 'PGRST204') {
+      throw StateError(
+        'Skema database Supabase belum sesuai atau belum diperbarui. '
+        'Pastikan nama tabel adalah "stock_transactions" (bukan "stock_transaction"), '
+        'kolom "date" sudah dibuat, dan reload schema cache Supabase dengan query: NOTIFY pgrst, \'reload schema\';',
+      );
+    }
     throw StateError(error.message);
   }
 
