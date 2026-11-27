@@ -7,9 +7,10 @@ create table if not exists public.stock_transactions (
   product_id uuid not null,
   type text not null check (type in ('IN', 'OUT')),
   quantity integer not null check (quantity > 0),
-  date timestamp with time zone not null default now(),
-  notes text,
+  transaction_date timestamp with time zone not null default now(),
+  note text,
   created_at timestamp with time zone not null default timezone('utc'::text, now()),
+  updated_at timestamp with time zone not null default timezone('utc'::text, now()),
   constraint stock_transactions_product_id_owner_id_fkey
     foreign key (product_id, owner_id)
     references public.products (id, owner_id)
@@ -39,7 +40,7 @@ create policy "Users can delete their own stock transactions"
 
 -- Helpful indexes for querying transactions by owner and date
 create index if not exists stock_transactions_owner_date_idx
-  on public.stock_transactions (owner_id, date desc);
+  on public.stock_transactions (owner_id, transaction_date desc);
 
 create index if not exists stock_transactions_product_owner_idx
   on public.stock_transactions (product_id, owner_id);

@@ -71,7 +71,8 @@ void main() {
     expect(writeJson['product_id'], 'prod-456');
     expect(writeJson['type'], 'IN');
     expect(writeJson['quantity'], 10);
-    expect(writeJson['notes'], 'catatan');
+    expect(writeJson['transaction_date'], '2026-11-25T12:00:00.000Z');
+    expect(writeJson['note'], 'catatan');
   });
 
   test('StockTransactionModel.toWriteJson preserves real UUID', () {

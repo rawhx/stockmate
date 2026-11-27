@@ -23,8 +23,8 @@ Map<String, dynamic> _row({
   'product_id': _productId,
   'type': type,
   'quantity': quantity,
-  'date': '2026-11-25T10:00:00.000Z',
-  'notes': 'Stok masuk dari supplier',
+  'transaction_date': '2026-11-25T10:00:00.000Z',
+  'note': 'Stok masuk dari supplier',
   'created_at': '2026-11-25T10:00:00.000Z',
   'products': {
     'name': 'Beras Premium',

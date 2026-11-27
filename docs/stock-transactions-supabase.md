@@ -14,9 +14,10 @@ Integrasi ini menggunakan skema PostgreSQL pada Supabase:
   - `product_id`: UUID (foreign key ke `public.products(id)`)
   - `type`: Text (`'IN'` atau `'OUT'`)
   - `quantity`: Integer (`> 0`)
-  - `date`: Timestamp with time zone (default `now()`)
-  - `notes`: Text nullable
+  - `transaction_date`: Timestamp with time zone (default `now()`)
+  - `note`: Text nullable
   - `created_at`: Timestamp with time zone (default UTC `now()`)
+  - `updated_at`: Timestamp with time zone (default UTC `now()`)
 - **Foreign Key Constraint Komposit**:
   `(product_id, owner_id) references public.products(id, owner_id) on delete restrict`
   Constraint ini mencegah penghapusan produk secara sembarangan jika produk tersebut memiliki riwayat transaksi stok.

@@ -22,6 +22,9 @@ class StockTransactionRemoteDataSource implements StockTransactionDataSource {
     }
   }
 
+  static const _selectQuery =
+      'id, product_id, type, quantity, transaction_date, note, created_at, products(code, name)';
+
   Never _handlePostgrestError(PostgrestException error) {
     final code = error.code;
     if (code == '23503') {
@@ -33,8 +36,8 @@ class StockTransactionRemoteDataSource implements StockTransactionDataSource {
     if (error.message.contains('schema cache') || code == 'PGRST204') {
       throw StateError(
         'Skema database Supabase belum sesuai atau belum diperbarui. '
-        'Pastikan nama tabel adalah "stock_transactions" (bukan "stock_transaction"), '
-        'kolom "date" sudah dibuat, dan reload schema cache Supabase dengan query: NOTIFY pgrst, \'reload schema\';',
+        'Pastikan nama tabel adalah "stock_transactions", kolom "transaction_date" dan "note" sudah sesuai, '
+        'dan reload schema cache Supabase dengan query: NOTIFY pgrst, \'reload schema\';',
       );
     }
     throw StateError(error.message);
@@ -46,11 +49,9 @@ class StockTransactionRemoteDataSource implements StockTransactionDataSource {
     try {
       final rows = await _client
           .from('stock_transactions')
-          .select(
-            'id, product_id, type, quantity, date, notes, created_at, products(code, name)',
-          )
+          .select(_selectQuery)
           .eq('owner_id', ownerId)
-          .order('date', ascending: false);
+          .order('transaction_date', ascending: false);
       _checkSession(ownerId);
       return rows
           .map((row) => StockTransactionModel.fromJson(row))
@@ -66,9 +67,7 @@ class StockTransactionRemoteDataSource implements StockTransactionDataSource {
     try {
       final row = await _client
           .from('stock_transactions')
-          .select(
-            'id, product_id, type, quantity, date, notes, created_at, products(code, name)',
-          )
+          .select(_selectQuery)
           .eq('owner_id', ownerId)
           .eq('id', id)
           .maybeSingle();
@@ -93,9 +92,7 @@ class StockTransactionRemoteDataSource implements StockTransactionDataSource {
       final row = await _client
           .from('stock_transactions')
           .insert(insertData)
-          .select(
-            'id, product_id, type, quantity, date, notes, created_at, products(code, name)',
-          )
+          .select(_selectQuery)
           .single();
       _checkSession(ownerId);
       return StockTransactionModel.fromJson(row);
@@ -116,9 +113,7 @@ class StockTransactionRemoteDataSource implements StockTransactionDataSource {
           .update(updateData)
           .eq('id', transaction.id)
           .eq('owner_id', ownerId)
-          .select(
-            'id, product_id, type, quantity, date, notes, created_at, products(code, name)',
-          )
+          .select(_selectQuery)
           .single();
       _checkSession(ownerId);
       return StockTransactionModel.fromJson(row);
