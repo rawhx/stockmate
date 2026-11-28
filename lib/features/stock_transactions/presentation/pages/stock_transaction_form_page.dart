@@ -213,6 +213,7 @@ class _StockTransactionFormPageState extends State<StockTransactionFormPage> {
         quantity: quantity,
         date: _selectedDate,
         notes: notes.isEmpty ? null : notes,
+        clearNotes: notes.isEmpty,
       );
       success = await provider.editTransaction(updated);
     } else {
