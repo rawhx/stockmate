@@ -1,56 +1,18 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
-
-import '../../data/datasources/category_supabase_datasource.dart';
-import '../../data/repositories/category_repository_impl.dart';
-
-import '../../domain/usecases/get_categories.dart';
-import '../../domain/usecases/add_category.dart';
-import '../../domain/usecases/update_category.dart';
-import '../../domain/usecases/delete_category.dart';
-
-import '../providers/category_provider.dart';
 import '../pages/category_list_page.dart';
 import '../pages/category_detail_page.dart';
 import '../pages/category_form_page.dart';
 
-import 'package:supabase_flutter/supabase_flutter.dart';
-
-SupabaseClient? _getSupabaseClientSafely() {
-  try {
-    return Supabase.instance.client;
-  } catch (_) {
-    return null;
-  }
-}
-
-final CategorySupabaseDataSource _dataSource = CategorySupabaseDataSource(
-  _getSupabaseClientSafely(),
-);
-
-final CategoryRepositoryImpl _repository = CategoryRepositoryImpl(_dataSource);
-
-final CategoryProvider _categoryProvider = CategoryProvider(
-  getCategories: GetCategories(_repository),
-  addCategory: AddCategory(_repository),
-  updateCategory: UpdateCategory(_repository),
-  deleteCategory: DeleteCategory(_repository),
-);
-
-// Routes milik fitur Categories.
 
 final List<RouteBase> categoryRoutes = [
   GoRoute(
     path: '/categories',
     builder: (context, state) {
-      return ChangeNotifierProvider<CategoryProvider>.value(
-        value: _categoryProvider,
-        child: CategoryListPage(
+      return CategoryListPage(
           onOpenDetail: (id) => context.push('/categories/$id'),
           onEditCategory: (id) => context.push('/categories/$id/edit'),
           onAddCategory: () => context.push('/categories/new'),
-        ),
       );
     },
   ),
@@ -60,13 +22,10 @@ final List<RouteBase> categoryRoutes = [
     builder: (context, state) {
       final parentId = state.uri.queryParameters['parentId'];
 
-      return ChangeNotifierProvider<CategoryProvider>.value(
-        value: _categoryProvider,
-        child: CategoryFormPage(
+      return CategoryFormPage(
           parentId: parentId,
           onSaved: () => _closeCategoryForm(context, parentId),
           onCancel: () => _closeCategoryForm(context, parentId),
-        ),
       );
     },
   ),
@@ -76,9 +35,7 @@ final List<RouteBase> categoryRoutes = [
     builder: (context, state) {
       final id = state.pathParameters['id']!;
 
-      return ChangeNotifierProvider<CategoryProvider>.value(
-        value: _categoryProvider,
-        child: CategoryDetailPage(
+      return CategoryDetailPage(
           categoryId: id,
           onAddSubcategory: () => context.push('/categories/new?parentId=$id'),
           onEdit: () => context.push('/categories/$id/edit'),
@@ -91,7 +48,6 @@ final List<RouteBase> categoryRoutes = [
           },
           onOpenSubcategory: (subcategoryId) =>
               context.push('/categories/$subcategoryId'),
-        ),
       );
     },
   ),
@@ -101,13 +57,10 @@ final List<RouteBase> categoryRoutes = [
     builder: (context, state) {
       final id = state.pathParameters['id']!;
 
-      return ChangeNotifierProvider<CategoryProvider>.value(
-        value: _categoryProvider,
-        child: CategoryFormPage(
+      return CategoryFormPage(
           categoryId: id,
           onSaved: () => _closeCategoryForm(context, id),
           onCancel: () => _closeCategoryForm(context, id),
-        ),
       );
     },
   ),

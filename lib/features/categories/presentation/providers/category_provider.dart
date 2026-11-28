@@ -18,10 +18,10 @@ class CategoryProvider extends ChangeNotifier {
     required this.addCategory,
     required this.updateCategory,
     required this.deleteCategory,
-    this.getCategoryById,
+    required this.getCategoryById,
   });
 
-  final GetCategoryById? getCategoryById;
+  final GetCategoryById getCategoryById;
 
   List<CategoryEntity> _categories = [];
   bool _isLoading = false;
@@ -48,7 +48,7 @@ class CategoryProvider extends ChangeNotifier {
 
   Future<CategoryEntity?> getCategory(String id) async {
     final generation = _generation;
-    final category = await getCategoryById!(id);
+    final category = await getCategoryById(id);
     return _isCurrent(generation) ? category : null;
   }
 
