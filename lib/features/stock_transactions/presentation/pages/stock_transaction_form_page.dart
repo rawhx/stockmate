@@ -188,7 +188,9 @@ class _StockTransactionFormPageState extends State<StockTransactionFormPage> {
   }
 
   Future<void> _handleSubmit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_isLoading || _formKey.currentState?.validate() != true) return;
+    final existing = _existingTransaction;
+    if (widget.isEditing && existing == null) return;
     if (_selectedProduct == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Silakan pilih barang terlebih dahulu.')),
@@ -215,8 +217,8 @@ class _StockTransactionFormPageState extends State<StockTransactionFormPage> {
     final quantity = _enteredQuantity;
 
     bool success;
-    if (widget.isEditing && _existingTransaction != null) {
-      final updated = _existingTransaction!.copyWith(
+    if (widget.isEditing) {
+      final updated = existing!.copyWith(
         productId: _selectedProduct!.id,
         productName: _selectedProduct!.name,
         productCode: _selectedProduct!.code,
