@@ -1,7 +1,8 @@
 import '../../domain/entities/transaction_type.dart';
 import '../models/stock_transaction_model.dart';
+import 'stock_transaction_data_source.dart';
 
-class StockTransactionMockDataSource {
+class StockTransactionMockDataSource implements StockTransactionDataSource {
   final List<StockTransactionModel> _transactions = [
     StockTransactionModel(
       id: 'tx-1',
@@ -60,15 +61,15 @@ class StockTransactionMockDataSource {
     ),
   ];
 
+  @override
   Future<List<StockTransactionModel>> getTransactions() async {
-    await Future<void>.delayed(const Duration(milliseconds: 150));
     final sorted = List<StockTransactionModel>.from(_transactions)
       ..sort((a, b) => b.date.compareTo(a.date));
     return List.unmodifiable(sorted);
   }
 
+  @override
   Future<StockTransactionModel?> getTransaction(String id) async {
-    await Future<void>.delayed(const Duration(milliseconds: 100));
     try {
       return _transactions.firstWhere((tx) => tx.id == id);
     } catch (_) {
@@ -76,18 +77,18 @@ class StockTransactionMockDataSource {
     }
   }
 
+  @override
   Future<StockTransactionModel> createTransaction(
     StockTransactionModel transaction,
   ) async {
-    await Future<void>.delayed(const Duration(milliseconds: 150));
     _transactions.insert(0, transaction);
     return transaction;
   }
 
+  @override
   Future<StockTransactionModel> updateTransaction(
     StockTransactionModel transaction,
   ) async {
-    await Future<void>.delayed(const Duration(milliseconds: 150));
     final index = _transactions.indexWhere((tx) => tx.id == transaction.id);
     if (index == -1) {
       throw StateError('Transaksi dengan ID ${transaction.id} tidak ditemukan');
@@ -96,8 +97,8 @@ class StockTransactionMockDataSource {
     return transaction;
   }
 
+  @override
   Future<void> deleteTransaction(String id) async {
-    await Future<void>.delayed(const Duration(milliseconds: 150));
     final index = _transactions.indexWhere((tx) => tx.id == id);
     if (index == -1) {
       throw StateError('Transaksi dengan ID $id tidak ditemukan');

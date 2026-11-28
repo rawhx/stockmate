@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:stockmate/features/products/domain/entities/product.dart';
 
@@ -20,6 +22,7 @@ class StockTransactionProvider extends ChangeNotifier {
     required this.deleteStockTransaction,
     this.onGetProduct,
     this.onUpdateProduct,
+    this.onRefreshProducts,
   });
 
   final GetStockTransactions getStockTransactions;
@@ -30,12 +33,25 @@ class StockTransactionProvider extends ChangeNotifier {
 
   Future<Product?> Function(String productId)? onGetProduct;
   Future<bool> Function(Product product)? onUpdateProduct;
+  Future<void> Function()? onRefreshProducts;
 
   List<StockTransaction> _transactions = [];
   bool _isLoading = false;
   String? _errorMessage;
   TransactionFilter _currentFilter = TransactionFilter.all;
   String _searchQuery = '';
+
+  String? _ownerId;
+  bool _hasOwner = false;
+  bool _disposed = false;
+  int _generation = 0;
+  Future<void>? _pendingFetch;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
 
   List<StockTransaction> get transactions => List.unmodifiable(_transactions);
   bool get isLoading => _isLoading;
@@ -81,15 +97,43 @@ class StockTransactionProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> fetchTransactions() async {
+  void setOwner(String? ownerId) {
+    if (_hasOwner && ownerId == _ownerId) return;
+    _hasOwner = true;
+    _ownerId = ownerId;
+    _generation++;
+    _transactions = [];
+    _errorMessage = null;
+    _pendingFetch = null;
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> fetchTransactions() {
+    if (_pendingFetch != null) return _pendingFetch!;
+    final request = _fetchTransactions(_generation);
+    _pendingFetch = request;
+    return request.whenComplete(() {
+      if (identical(_pendingFetch, request)) _pendingFetch = null;
+    });
+  }
+
+  Future<void> _fetchTransactions(int gen) async {
     _setLoading(true);
     try {
-      _transactions = await getStockTransactions();
-      _errorMessage = null;
+      final items = await getStockTransactions();
+      if (!_disposed && gen == _generation) {
+        _transactions = items;
+        _errorMessage = null;
+      }
     } catch (e) {
-      _errorMessage = e.toString();
+      if (!_disposed && gen == _generation) {
+        _errorMessage = e.toString().replaceFirst('StateError: ', '');
+      }
     } finally {
-      _setLoading(false);
+      if (!_disposed && gen == _generation) {
+        _setLoading(false);
+      }
     }
   }
 
@@ -97,7 +141,7 @@ class StockTransactionProvider extends ChangeNotifier {
     try {
       return await getStockTransaction(id);
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = e.toString().replaceFirst('StateError: ', '');
       notifyListeners();
       return null;
     }
@@ -106,7 +150,6 @@ class StockTransactionProvider extends ChangeNotifier {
   Future<bool> addTransaction(StockTransaction transaction) async {
     _setLoading(true);
     try {
-      // Validasi ketersediaan stok produk jika ada koneksi ke ProductProvider
       if (onGetProduct != null) {
         final product = await onGetProduct!(transaction.productId);
         if (product != null) {
@@ -117,18 +160,19 @@ class StockTransactionProvider extends ChangeNotifier {
             );
           }
 
-          // Update stok produk
-          final newStock = transaction.type == TransactionType.inStock
-              ? product.currentStock + transaction.quantity
-              : product.currentStock - transaction.quantity;
-
           if (onUpdateProduct != null) {
+            final newStock = transaction.type == TransactionType.inStock
+                ? product.currentStock + transaction.quantity
+                : product.currentStock - transaction.quantity;
             await onUpdateProduct!(product.copyWith(currentStock: newStock));
           }
         }
       }
 
       await createStockTransaction(transaction);
+      if (onRefreshProducts != null) {
+        await onRefreshProducts!();
+      }
       await fetchTransactions();
       _errorMessage = null;
       return true;
@@ -150,7 +194,6 @@ class StockTransactionProvider extends ChangeNotifier {
       if (onGetProduct != null) {
         final product = await onGetProduct!(updated.productId);
         if (product != null) {
-          // Kembalikan efek stok lama terlebih dahulu
           var simulatedStock = product.currentStock;
           if (old.type == TransactionType.inStock) {
             simulatedStock -= old.quantity;
@@ -158,7 +201,6 @@ class StockTransactionProvider extends ChangeNotifier {
             simulatedStock += old.quantity;
           }
 
-          // Terapkan efek stok transaksi baru
           if (updated.type == TransactionType.outStock &&
               simulatedStock < updated.quantity) {
             throw StateError(
@@ -183,6 +225,9 @@ class StockTransactionProvider extends ChangeNotifier {
       }
 
       await updateStockTransaction(updated);
+      if (onRefreshProducts != null) {
+        await onRefreshProducts!();
+      }
       await fetchTransactions();
       _errorMessage = null;
       return true;
@@ -221,6 +266,9 @@ class StockTransactionProvider extends ChangeNotifier {
       }
 
       await deleteStockTransaction(id);
+      if (onRefreshProducts != null) {
+        await onRefreshProducts!();
+      }
       await fetchTransactions();
       _errorMessage = null;
       return true;

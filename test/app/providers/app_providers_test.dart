@@ -4,8 +4,11 @@ import 'package:http/testing.dart';
 import 'package:provider/provider.dart';
 import 'package:stockmate/app/providers/app_providers.dart';
 import 'package:stockmate/features/auth/domain/entities/auth_user.dart';
+import 'package:stockmate/features/products/data/datasources/product_mock_data_source.dart';
 import 'package:stockmate/features/products/data/datasources/product_remote_data_source.dart';
 import 'package:stockmate/features/products/data/repositories/product_repository_impl.dart';
+import 'package:stockmate/features/stock_transactions/data/datasources/stock_transaction_mock_data_source.dart';
+import 'package:stockmate/features/stock_transactions/data/repositories/stock_transaction_repository_impl.dart';
 import 'package:stockmate/features/stock_transactions/domain/entities/stock_transaction.dart';
 import 'package:stockmate/features/stock_transactions/domain/entities/transaction_type.dart';
 import 'package:stockmate/features/stock_transactions/presentation/providers/stock_transaction_provider.dart';
@@ -70,5 +73,34 @@ void main() {
       expect(stock.transactions, isEmpty);
     },
     timeout: const Timeout(Duration(seconds: 15)),
+  );
+
+  testWidgets(
+    'allows custom stockTransactionRepository injection',
+    (tester) async {
+      late StockTransactionProvider stock;
+      final fakeTxSource = StockTransactionMockDataSource();
+      await tester.pumpWidget(
+        AppProviders(
+          authRepository: auth,
+          productRepository: ProductRepositoryImpl(
+            ProductMockDataSource(),
+          ),
+          stockTransactionRepository: StockTransactionRepositoryImpl(
+            fakeTxSource,
+          ),
+          child: Builder(
+            builder: (context) {
+              stock = context.read<StockTransactionProvider>();
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 350));
+      expect(stock, isNotNull);
+      await stock.fetchTransactions();
+      expect(stock.transactions, isNotEmpty);
+    },
   );
 }

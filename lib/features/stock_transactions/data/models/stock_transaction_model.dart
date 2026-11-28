@@ -28,16 +28,33 @@ class StockTransactionModel extends StockTransaction {
     );
   }
 
-  factory StockTransactionModel.fromJson(Map<String, dynamic> json) {
+  factory StockTransactionModel.fromJson(
+    Map<String, dynamic> json, {
+    String? productName,
+    String? productCode,
+  }) {
+    final productData = json['products'] as Map<String, dynamic>?;
+    final resolvedName = productName ??
+        productData?['name'] as String? ??
+        json['product_name'] as String? ??
+        '';
+    final resolvedCode = productCode ??
+        productData?['code'] as String? ??
+        json['product_code'] as String? ??
+        '';
+
+    final dateStr = (json['transaction_date'] ?? json['date']) as String;
+    final notesVal = (json['note'] ?? json['notes']) as String?;
+
     return StockTransactionModel(
       id: json['id'] as String,
       productId: json['product_id'] as String,
-      productName: json['product_name'] as String,
-      productCode: json['product_code'] as String,
+      productName: resolvedName,
+      productCode: resolvedCode,
       type: TransactionType.fromString(json['type'] as String),
       quantity: (json['quantity'] as num).toInt(),
-      date: DateTime.parse(json['date'] as String),
-      notes: json['notes'] as String?,
+      date: DateTime.parse(dateStr),
+      notes: notesVal,
       createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
@@ -50,9 +67,22 @@ class StockTransactionModel extends StockTransaction {
       'product_code': productCode,
       'type': type == TransactionType.inStock ? 'IN' : 'OUT',
       'quantity': quantity,
+      'transaction_date': date.toIso8601String(),
       'date': date.toIso8601String(),
+      'note': notes,
       'notes': notes,
       'created_at': createdAt.toIso8601String(),
+    };
+  }
+
+  Map<String, dynamic> toWriteJson() {
+    return {
+      if (id.isNotEmpty && !id.startsWith('tx-')) 'id': id,
+      'product_id': productId,
+      'type': type == TransactionType.inStock ? 'IN' : 'OUT',
+      'quantity': quantity,
+      'transaction_date': date.toIso8601String(),
+      if (notes != null) 'note': notes,
     };
   }
 }

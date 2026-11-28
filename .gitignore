@@ -47,4 +47,8 @@ app.*.map.json
 # Local environment and secret files
 .env
 .env.*
+env.dev.json
 !.env.example
+
+# DevTools
+devtools_options.yaml
