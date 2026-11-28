@@ -140,6 +140,29 @@ void main() {
     expect(find.byTooltip('Sign out'), findsOneWidget);
   });
 
+  for (final edit in [false, true]) {
+    testWidgets('category link loads without opening the category list (edit: $edit)', (
+      tester,
+    ) async {
+      final repository = FakeAuthRepository(
+        currentUser: const AuthUser(id: 'user-id', email: 'user@example.com'),
+      );
+      addTearDown(repository.dispose);
+      await pumpApp(tester, repository);
+      final router = GoRouter.of(tester.element(find.text('Products')));
+      router.go(edit ? '/categories/cat-1/edit' : '/categories/cat-1');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Kategori tidak ditemukan.'), findsNothing);
+      if (edit) {
+        expect(find.widgetWithText(TextFormField, 'ATK'), findsOneWidget);
+      } else {
+        expect(find.text('Detail Kategori'), findsOneWidget);
+        expect(find.text('ATK'), findsOneWidget);
+      }
+    });
+  }
+
   testWidgets(
     'stock transactions action opens stock transactions and returns to products',
     (tester) async {
