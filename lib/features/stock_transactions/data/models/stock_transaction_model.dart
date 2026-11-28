@@ -82,7 +82,7 @@ class StockTransactionModel extends StockTransaction {
       'type': type == TransactionType.inStock ? 'IN' : 'OUT',
       'quantity': quantity,
       'transaction_date': date.toIso8601String(),
-      if (notes != null) 'note': notes,
+      'note': notes,
     };
   }
 }
