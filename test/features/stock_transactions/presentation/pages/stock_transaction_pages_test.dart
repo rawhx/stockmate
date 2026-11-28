@@ -18,6 +18,7 @@ import 'package:stockmate/features/stock_transactions/domain/usecases/get_stock_
 import 'package:stockmate/features/stock_transactions/domain/usecases/get_stock_transactions.dart';
 import 'package:stockmate/features/stock_transactions/domain/usecases/update_stock_transaction.dart';
 import 'package:stockmate/features/stock_transactions/presentation/pages/stock_transaction_detail_page.dart';
+import 'package:stockmate/features/stock_transactions/presentation/pages/stock_transaction_form_page.dart';
 import 'package:stockmate/features/stock_transactions/presentation/pages/stock_transaction_list_page.dart';
 import 'package:stockmate/features/stock_transactions/presentation/providers/stock_transaction_provider.dart';
 
@@ -62,6 +63,25 @@ void main() {
       child: MaterialApp(home: child),
     );
   }
+
+  testWidgets(
+    'an unavailable edit shows retry instead of a create form',
+    (tester) async {
+      final before = await txDataSource.getTransactions();
+      await tester.pumpWidget(
+        buildTestableWidget(
+          const StockTransactionFormPage(transactionId: 'missing'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Transaksi tidak ditemukan.'), findsOneWidget);
+      expect(find.byType(Form), findsNothing);
+      await tester.tap(find.text('Coba lagi'));
+      await tester.pumpAndSettle();
+      expect(find.text('Transaksi tidak ditemukan.'), findsOneWidget);
+      expect(await txDataSource.getTransactions(), hasLength(before.length));
+    },
+  );
 
   testWidgets(
     'StockTransactionListPage renders title, FAB, and transaction cards',
