@@ -49,3 +49,6 @@ app.*.map.json
 .env.*
 env.dev.json
 !.env.example
+
+# DevTools
+devtools_options.yaml

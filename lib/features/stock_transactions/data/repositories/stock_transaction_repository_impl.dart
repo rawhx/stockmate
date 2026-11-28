@@ -1,12 +1,14 @@
 import '../../domain/entities/stock_transaction.dart';
 import '../../domain/repositories/stock_transaction_repository.dart';
-import '../datasources/stock_transaction_mock_data_source.dart';
+import '../datasources/stock_transaction_data_source.dart';
 import '../models/stock_transaction_model.dart';
 
 class StockTransactionRepositoryImpl implements StockTransactionRepository {
   StockTransactionRepositoryImpl(this._dataSource);
 
-  final StockTransactionMockDataSource _dataSource;
+  final StockTransactionDataSource _dataSource;
+
+  StockTransactionDataSource get dataSource => _dataSource;
 
   @override
   Future<List<StockTransaction>> getTransactions() async {
