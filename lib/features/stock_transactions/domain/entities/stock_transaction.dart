@@ -32,6 +32,7 @@ class StockTransaction {
     int? quantity,
     DateTime? date,
     String? notes,
+    bool clearNotes = false,
     DateTime? createdAt,
   }) {
     return StockTransaction(
@@ -42,7 +43,7 @@ class StockTransaction {
       type: type ?? this.type,
       quantity: quantity ?? this.quantity,
       date: date ?? this.date,
-      notes: notes ?? this.notes,
+      notes: clearNotes ? null : notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
     );
   }
