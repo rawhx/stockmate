@@ -3,6 +3,26 @@ import 'package:stockmate/features/stock_transactions/data/models/stock_transact
 import 'package:stockmate/features/stock_transactions/domain/entities/transaction_type.dart';
 
 void main() {
+  test('editing can preserve, replace or explicitly clear a note', () {
+    final transaction = StockTransactionModel(
+      id: 'tx-1',
+      productId: 'product-1',
+      productName: 'Beras',
+      productCode: 'BR-1',
+      type: TransactionType.inStock,
+      quantity: 4,
+      date: DateTime.utc(2026),
+      createdAt: DateTime.utc(2026),
+      notes: 'Catatan lama',
+    );
+    expect(transaction.copyWith(quantity: 5).notes, 'Catatan lama');
+    expect(transaction.copyWith(notes: 'Baru').notes, 'Baru');
+    final cleared = StockTransactionModel.fromEntity(
+      transaction.copyWith(clearNotes: true),
+    );
+    expect(cleared.toWriteJson(), containsPair('note', null));
+  });
+
   test('StockTransactionModel.fromJson parses direct fields', () {
     final json = {
       'id': 'tx-123',
