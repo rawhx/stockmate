@@ -8,6 +8,7 @@ security definer
 set search_path = ''
 as $$
 declare
+  session_owner uuid := auth.uid();
   previous_owner uuid;
   previous_product uuid;
   previous_delta bigint;
@@ -28,6 +29,16 @@ begin
     next_product := new.product_id;
     next_delta := case new.type when 'IN' then new.quantity::bigint
                                else -new.quantity::bigint end;
+  end if;
+
+  -- The trigger runs before RLS checks the new row, so verify an authenticated
+  -- caller's ownership before the privileged lock and balance read.
+  if session_owner is not null and (
+    coalesce(previous_owner, session_owner) <> session_owner
+    or coalesce(next_owner, session_owner) <> session_owner
+  ) then
+    raise exception using errcode = '42501',
+      message = 'Akun ini tidak memiliki akses untuk mengubah transaksi.';
   end if;
 
   -- An account deletion cascades through its entire ledger.
