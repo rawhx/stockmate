@@ -76,29 +76,13 @@ class _StockTransactionFormPageState extends State<StockTransactionFormPage> {
       }
       _existingTransaction = tx;
 
-      {
-        _selectedType = tx.type;
-        _quantityController.text = tx.quantity.toString();
-        _notesController.text = tx.notes ?? '';
-        _selectedDate = tx.date;
-
-        final products = productProvider.products;
-        try {
-          _selectedProduct = products.firstWhere((p) => p.id == tx.productId);
-        } catch (_) {
-          _selectedProduct = Product(
-            id: tx.productId,
-            code: tx.productCode,
-            name: tx.productName,
-            price: 0,
-            unit: 'unit',
-            categoryId: '',
-            categoryName: '',
-            minimumStock: 0,
-            currentStock: 0,
-          );
-        }
-      }
+      _selectedType = tx.type;
+      _quantityController.text = tx.quantity.toString();
+      _notesController.text = tx.notes ?? '';
+      _selectedDate = tx.date;
+      _selectedProduct = productProvider.products
+          .where((product) => product.id == tx.productId)
+          .firstOrNull;
       setState(() => _isLoading = false);
     } else {
       final products = productProvider.products;
@@ -355,9 +339,7 @@ class _StockTransactionFormPageState extends State<StockTransactionFormPage> {
                                         ? products.firstWhere(
                                             (p) => p.id == _selectedProduct!.id,
                                           )
-                                        : (products.isNotEmpty
-                                              ? products.first
-                                              : null),
+                                        : null,
                                     decoration: InputDecoration(
                                       hintText: 'Pilih barang inventaris',
                                       prefixIcon: const Icon(
