@@ -37,11 +37,21 @@ import 'package:stockmate/features/suppliers/domain/repositories/suppliers_repos
 import 'package:stockmate/features/suppliers/domain/usecases/supplier_usecases.dart';
 import 'package:stockmate/features/suppliers/presentation/providers/suppliers_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:stockmate/features/categories/data/datasources/category_supabase_datasource.dart';
+import 'package:stockmate/features/categories/data/repositories/category_repository_impl.dart';
+import 'package:stockmate/features/categories/domain/repositories/category_repository.dart';
+import 'package:stockmate/features/categories/domain/usecases/add_category.dart';
+import 'package:stockmate/features/categories/domain/usecases/delete_category.dart';
+import 'package:stockmate/features/categories/domain/usecases/get_categories.dart';
+import 'package:stockmate/features/categories/domain/usecases/get_category_by_id.dart';
+import 'package:stockmate/features/categories/domain/usecases/update_category.dart';
+import 'package:stockmate/features/categories/presentation/providers/category_provider.dart';
 
 class AppProviders extends StatelessWidget {
   const AppProviders({
     required this.child,
     this.authRepository,
+    this.categoryRepository,
     this.productRepository,
     this.suppliersRepository,
     this.stockTransactionRepository,
@@ -51,6 +61,7 @@ class AppProviders extends StatelessWidget {
 
   final Widget child;
   final AuthRepository? authRepository;
+  final CategoryRepository? categoryRepository;
   final ProductRepository? productRepository;
   final SuppliersRepository? suppliersRepository;
   final StockTransactionRepository? stockTransactionRepository;
@@ -117,6 +128,19 @@ class AppProviders extends StatelessWidget {
             );
           },
         ),
+        Provider<CategoryRepository>(
+          create: (_) =>
+              categoryRepository ??
+              CategoryRepositoryImpl(
+                CategorySupabaseDataSource(Supabase.instance.client),
+              ),
+        ),
+        ChangeNotifierProxyProvider<AuthProvider, CategoryProvider>(
+          create: _createCategoryProvider,
+          update: (context, auth, previous) =>
+              (previous ?? _createCategoryProvider(context))
+                ..setOwner(auth.user?.id),
+        ),
         Provider<ProductRepository>(
           create: (_) =>
               productRepository ??
@@ -143,9 +167,7 @@ class AppProviders extends StatelessWidget {
               (previous ?? _createSuppliersProvider(context))
                 ..setOwner(auth.user?.id),
         ),
-        Provider<StockTransactionRepository>.value(
-          value: resolvedStockRepo,
-        ),
+        Provider<StockTransactionRepository>.value(value: resolvedStockRepo),
         ChangeNotifierProxyProvider2<
           AuthProvider,
           ProductProvider,
@@ -176,8 +198,8 @@ class AppProviders extends StatelessWidget {
             if (currentStockTxProvider != null) {
               currentStockTxProvider.onGetProduct =
                   isMockStockWithRemoteProducts
-                      ? blockMockStockMutation
-                      : productProvider.getProductById;
+                  ? blockMockStockMutation
+                  : productProvider.getProductById;
               currentStockTxProvider.onUpdateProduct = usesRemoteProducts
                   ? null
                   : productProvider.editProduct;
@@ -190,6 +212,17 @@ class AppProviders extends StatelessWidget {
         ),
       ],
       child: child,
+    );
+  }
+
+  CategoryProvider _createCategoryProvider(BuildContext context) {
+    final repository = context.read<CategoryRepository>();
+    return CategoryProvider(
+      getCategories: GetCategories(repository),
+      getCategoryById: GetCategoryById(repository),
+      addCategory: AddCategory(repository),
+      updateCategory: UpdateCategory(repository),
+      deleteCategory: DeleteCategory(repository),
     );
   }
 

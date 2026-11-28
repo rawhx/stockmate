@@ -19,7 +19,7 @@ class _CategoryProductPickerDialogState
 
   @override
   Widget build(BuildContext context) {
-    final productProvider = context.read<ProductProvider>();
+    final productProvider = context.watch<ProductProvider>();
     final normalizedQuery = _query.trim().toLowerCase();
     final products = productProvider.products.where((product) {
       return normalizedQuery.isEmpty ||
@@ -85,14 +85,7 @@ class _CategoryProductPickerDialogState
         FilledButton.icon(
           onPressed: _selectedProductIds.isEmpty
               ? null
-              : () => Navigator.pop(
-                  context,
-                  productProvider.products
-                      .where(
-                        (product) => _selectedProductIds.contains(product.id),
-                      )
-                      .toList(),
-                ),
+              : () => Navigator.pop(context, Set.of(_selectedProductIds)),
           icon: const Icon(Icons.link),
           label: const Text('Tambahkan Produk'),
         ),

@@ -9,4 +9,9 @@ class UpdateProduct {
   Future<void> call(Product product) {
     return repository.updateProduct(product);
   }
+
+  Future<Set<String>> changeCategory(
+    Set<String> productIds,
+    String categoryId,
+  ) => repository.changeCategory(productIds, categoryId);
 }

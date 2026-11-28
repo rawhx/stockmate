@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../domain/entities/category_entity.dart';
-import '../../../products/domain/entities/product.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import '../widgets/category_detail_header.dart';
 import '../widgets/category_product_picker_dialog.dart';
@@ -11,7 +10,8 @@ import '../providers/category_provider.dart';
 import '../widgets/subcategory_tile.dart';
 
 class CategoryDetailPage extends StatelessWidget {
-  final String categoryId;
+  final CategoryEntity initialCategory;
+  String get categoryId => initialCategory.id;
   final VoidCallback onEdit;
   final VoidCallback onBack;
   final VoidCallback onAddSubcategory;
@@ -19,7 +19,7 @@ class CategoryDetailPage extends StatelessWidget {
 
   const CategoryDetailPage({
     super.key,
-    required this.categoryId,
+    required this.initialCategory,
     required this.onEdit,
     required this.onBack,
     required this.onAddSubcategory,
@@ -36,35 +36,30 @@ class CategoryDetailPage extends StatelessWidget {
 
     if (!context.mounted) return;
 
-    final selectedProducts = await showDialog<List<Product>>(
+    final selectedIds = await showDialog<Set<String>>(
       context: context,
       builder: (_) =>
           CategoryProductPickerDialog(categoryName: targetCategoryName),
     );
 
-    if (selectedProducts == null ||
-        selectedProducts.isEmpty ||
-        !context.mounted) {
+    if (selectedIds == null || selectedIds.isEmpty || !context.mounted) {
       return;
     }
 
-    var success = true;
-    for (final product in selectedProducts) {
-      final updatedProduct = product.copyWith(
-        categoryId: targetCategoryId,
-        categoryName: targetCategoryName,
-      );
-      success = await productProvider.editProduct(updatedProduct) && success;
-    }
+    final moved = await productProvider.changeProductCategory(
+      selectedIds,
+      targetCategoryId,
+    );
 
     if (!context.mounted) return;
+    final failed = selectedIds.length - moved;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          success
-              ? '${selectedProducts.length} produk berhasil ditambahkan ke kategori'
-              : productProvider.errorMessage ?? 'Gagal menambahkan produk',
+          failed == 0
+              ? '$moved produk berhasil ditambahkan ke kategori'
+              : '$moved produk berhasil, $failed gagal ditambahkan ke kategori.',
         ),
       ),
     );
@@ -121,22 +116,7 @@ class CategoryDetailPage extends StatelessWidget {
       }
     }
 
-    final selectedCategory = category;
-    if (selectedCategory == null) {
-      return Scaffold(
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            tooltip: 'Kembali ke Daftar Kategori',
-            onPressed: onBack,
-          ),
-          title: const Text('Detail Kategori'),
-        ),
-
-        body: const Center(child: Text('Kategori tidak ditemukan')),
-      );
-    }
+    final selectedCategory = category ?? initialCategory;
 
     final subcategories = provider.categories
         .where((item) => item.parentId == categoryId)

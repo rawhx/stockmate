@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:stockmate/app/router/app_routes.dart';
 
@@ -17,12 +18,16 @@ final List<RouteBase> stockTransactionRoutes = <RouteBase>[
   ),
   GoRoute(
     path: '/stock-transactions/:id',
-    builder: (context, state) =>
-        StockTransactionDetailPage(transactionId: state.pathParameters['id']!),
+    builder: (context, state) {
+      final id = state.pathParameters['id']!;
+      return StockTransactionDetailPage(key: ValueKey(id), transactionId: id);
+    },
   ),
   GoRoute(
     path: '/stock-transactions/:id/edit',
-    builder: (context, state) =>
-        StockTransactionFormPage(transactionId: state.pathParameters['id']),
+    builder: (context, state) {
+      final id = state.pathParameters['id']!;
+      return StockTransactionFormPage(key: ValueKey(id), transactionId: id);
+    },
   ),
 ];

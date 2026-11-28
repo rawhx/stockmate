@@ -137,6 +137,26 @@ void main() {
   });
 
   test(
+    'moving products validates ownership and patches only category_id',
+    () async {
+      final missingId = '55555555-5555-4555-8555-555555555555';
+      final moved = await source.changeCategory({_id, missingId}, _category);
+      expect(moved, {_id});
+      expect(requests, hasLength(2));
+      expect(requests.first.url.pathSegments.last, 'categories');
+      expect(requests.first.url.queryParameters['owner_id'], 'eq.$_owner');
+      final patch = requests.last;
+      expect(patch.method, 'PATCH');
+      expect(patch.url.pathSegments.last, 'products');
+      expect(patch.url.queryParameters['owner_id'], 'eq.$_owner');
+      final ids = patch.url.queryParameters['id'];
+      expect(ids, contains(_id));
+      expect(ids, contains(missingId));
+      expect(jsonDecode(patch.body), {'category_id': _category});
+    },
+  );
+
+  test(
     'reads stock summary and tolerates a product without supplier',
     () async {
       final products = await source.getProducts();

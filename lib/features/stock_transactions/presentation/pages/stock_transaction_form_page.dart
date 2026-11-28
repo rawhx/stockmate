@@ -29,17 +29,16 @@ class _StockTransactionFormPageState extends State<StockTransactionFormPage> {
   final TextEditingController _notesController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
 
-  bool _isInit = true;
-  bool _isLoading = false;
+  bool _isLoading = true;
+  String? _loadError;
   StockTransaction? _existingTransaction;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_isInit) {
-      _isInit = false;
-      _initializeFormData();
-    }
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _initializeFormData();
+    });
   }
 
   @override
@@ -50,6 +49,11 @@ class _StockTransactionFormPageState extends State<StockTransactionFormPage> {
   }
 
   Future<void> _initializeFormData() async {
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+      _existingTransaction = null;
+    });
     final productProvider = context.read<ProductProvider>();
     final txProvider = context.read<StockTransactionProvider>();
 
@@ -59,42 +63,31 @@ class _StockTransactionFormPageState extends State<StockTransactionFormPage> {
     if (!mounted) return;
 
     if (widget.isEditing) {
-      setState(() => _isLoading = true);
       final tx = await txProvider.getTransactionById(widget.transactionId!);
       if (!mounted) return;
+      if (tx == null) {
+        setState(() {
+          _loadError = txProvider.errorMessage ?? 'Transaksi tidak ditemukan.';
+          _isLoading = false;
+        });
+        return;
+      }
       _existingTransaction = tx;
 
-      if (tx != null) {
-        _selectedType = tx.type;
-        _quantityController.text = tx.quantity.toString();
-        _notesController.text = tx.notes ?? '';
-        _selectedDate = tx.date;
-
-        final products = productProvider.products;
-        try {
-          _selectedProduct = products.firstWhere((p) => p.id == tx.productId);
-        } catch (_) {
-          _selectedProduct = Product(
-            id: tx.productId,
-            code: tx.productCode,
-            name: tx.productName,
-            price: 0,
-            unit: 'unit',
-            categoryId: '',
-            categoryName: '',
-            minimumStock: 0,
-            currentStock: 0,
-          );
-        }
-      }
+      _selectedType = tx.type;
+      _quantityController.text = tx.quantity.toString();
+      _notesController.text = tx.notes ?? '';
+      _selectedDate = tx.date;
+      _selectedProduct = productProvider.products
+          .where((product) => product.id == tx.productId)
+          .firstOrNull;
       setState(() => _isLoading = false);
     } else {
       final products = productProvider.products;
-      if (products.isNotEmpty && _selectedProduct == null) {
-        setState(() {
-          _selectedProduct = products.first;
-        });
-      }
+      setState(() {
+        _selectedProduct ??= products.firstOrNull;
+        _isLoading = false;
+      });
     }
   }
 
@@ -147,28 +140,16 @@ class _StockTransactionFormPageState extends State<StockTransactionFormPage> {
   }
 
   int? get _simulatedNewStock {
-    if (_selectedProduct == null) return null;
-    final current = _selectedProduct!.currentStock;
-    final qty = _enteredQuantity;
-
-    if (!widget.isEditing) {
-      return _selectedType == TransactionType.inStock
-          ? current + qty
-          : current - qty;
-    }
-
-    // Mode Edit: hitung balik transaksi lama
-    if (_existingTransaction == null) return null;
-    var baseStock = current;
-    if (_existingTransaction!.type == TransactionType.inStock) {
-      baseStock -= _existingTransaction!.quantity;
-    } else {
-      baseStock += _existingTransaction!.quantity;
-    }
-
-    return _selectedType == TransactionType.inStock
-        ? baseStock + qty
-        : baseStock - qty;
+    final selected = _selectedProduct;
+    if (selected == null) return null;
+    final previous = _existingTransaction;
+    final previousQuantity = previous?.productId == selected.id
+        ? previous!.signedQuantity
+        : 0;
+    final nextQuantity = _selectedType.isIn
+        ? _enteredQuantity
+        : -_enteredQuantity;
+    return selected.currentStock - previousQuantity + nextQuantity;
   }
 
   bool get _isStockExceeded {
@@ -177,22 +158,12 @@ class _StockTransactionFormPageState extends State<StockTransactionFormPage> {
   }
 
   Future<void> _handleSubmit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_isLoading || _formKey.currentState?.validate() != true) return;
+    final existing = _existingTransaction;
+    if (widget.isEditing && existing == null) return;
     if (_selectedProduct == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Silakan pilih barang terlebih dahulu.')),
-      );
-      return;
-    }
-
-    if (_isStockExceeded) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Transaksi keluar tidak dapat disimpan karena melebihi stok yang tersedia!',
-          ),
-          backgroundColor: Color(0xFFC62828),
-        ),
       );
       return;
     }
@@ -204,8 +175,8 @@ class _StockTransactionFormPageState extends State<StockTransactionFormPage> {
     final quantity = _enteredQuantity;
 
     bool success;
-    if (widget.isEditing && _existingTransaction != null) {
-      final updated = _existingTransaction!.copyWith(
+    if (widget.isEditing) {
+      final updated = existing!.copyWith(
         productId: _selectedProduct!.id,
         productName: _selectedProduct!.name,
         productCode: _selectedProduct!.code,
@@ -213,6 +184,7 @@ class _StockTransactionFormPageState extends State<StockTransactionFormPage> {
         quantity: quantity,
         date: _selectedDate,
         notes: notes.isEmpty ? null : notes,
+        clearNotes: notes.isEmpty,
       );
       success = await provider.editTransaction(updated);
     } else {
@@ -273,6 +245,26 @@ class _StockTransactionFormPageState extends State<StockTransactionFormPage> {
       body: SafeArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
+            : _loadError != null
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(_loadError!, textAlign: TextAlign.center),
+                      TextButton(
+                        onPressed: _initializeFormData,
+                        child: const Text('Coba lagi'),
+                      ),
+                      TextButton(
+                        onPressed: () => context.go('/stock-transactions'),
+                        child: const Text('Kembali'),
+                      ),
+                    ],
+                  ),
+                ),
+              )
             : SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Center(
@@ -321,9 +313,7 @@ class _StockTransactionFormPageState extends State<StockTransactionFormPage> {
                                         ? products.firstWhere(
                                             (p) => p.id == _selectedProduct!.id,
                                           )
-                                        : (products.isNotEmpty
-                                              ? products.first
-                                              : null),
+                                        : null,
                                     decoration: InputDecoration(
                                       hintText: 'Pilih barang inventaris',
                                       prefixIcon: const Icon(

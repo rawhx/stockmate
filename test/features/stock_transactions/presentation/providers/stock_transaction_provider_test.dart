@@ -133,6 +133,46 @@ void main() {
     },
   );
 
+  test(
+    'moving an outgoing transaction checks the destination balance',
+    () async {
+      final destination = testProduct.copyWith(
+        id: 'prod-destination',
+        currentStock: 2,
+      );
+      provider.onGetProduct = (id) async =>
+          id == destination.id ? destination : testProduct;
+      provider.onUpdateProduct = null;
+      final existing = StockTransaction(
+        id: 'tx-move',
+        productId: testProduct.id,
+        productName: testProduct.name,
+        productCode: testProduct.code,
+        type: TransactionType.outStock,
+        quantity: 8,
+        date: DateTime.utc(2026),
+        createdAt: DateTime.utc(2026),
+      );
+      await repository.createTransaction(existing);
+
+      final move = existing.copyWith(productId: destination.id);
+      expect(await provider.editTransaction(move), isFalse);
+      expect(
+        (await repository.getTransaction(existing.id))?.productId,
+        testProduct.id,
+      );
+
+      expect(
+        await provider.editTransaction(move.copyWith(quantity: 2)),
+        isTrue,
+      );
+      expect(
+        (await repository.getTransaction(existing.id))?.productId,
+        destination.id,
+      );
+    },
+  );
+
   test('editTransaction correctly updates stock differences', () async {
     // Buat transaksi keluar awal 5 unit -> sisa stok 15
     final tx = StockTransaction(

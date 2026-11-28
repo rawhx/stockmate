@@ -36,4 +36,10 @@ class ProductRepositoryImpl implements ProductRepository {
   Future<void> deleteProduct(String id) {
     return dataSource.deleteProduct(id);
   }
+
+  @override
+  Future<Set<String>> changeCategory(
+    Set<String> productIds,
+    String categoryId,
+  ) => dataSource.changeCategory(productIds, categoryId);
 }

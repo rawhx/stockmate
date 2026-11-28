@@ -244,6 +244,32 @@ class ProductRemoteDataSource implements ProductDataSource {
     _checkSession(ownerId);
   }
 
+  @override
+  Future<Set<String>> changeCategory(
+    Set<String> productIds,
+    String categoryId,
+  ) async {
+    if (productIds.isEmpty) return {};
+    final ownerId = _ownerId();
+    final categories = await _getNames('categories', [categoryId], ownerId);
+    if (!categories.containsKey(categoryId)) {
+      throw StateError('Pilih kategori yang tersedia pada akun ini.');
+    }
+    _checkSession(ownerId);
+    try {
+      final rows = await _client
+          .from('products')
+          .update({'category_id': categoryId})
+          .eq('owner_id', ownerId)
+          .inFilter('id', productIds.toList())
+          .select('id');
+      _checkSession(ownerId);
+      return rows.map((row) => row['id'] as String).toSet();
+    } on PostgrestException catch (error) {
+      _writeError(error);
+    }
+  }
+
   Never _writeError(PostgrestException error) {
     if (error.code == '23503') {
       throw StateError(

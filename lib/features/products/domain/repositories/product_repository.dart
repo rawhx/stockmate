@@ -12,5 +12,7 @@ abstract interface class ProductRepository {
 
   Future<void> updateProduct(Product product);
 
+  Future<Set<String>> changeCategory(Set<String> productIds, String categoryId);
+
   Future<void> deleteProduct(String id);
 }
