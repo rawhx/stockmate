@@ -23,6 +23,26 @@ class StockTransaction {
   final String? notes;
   final DateTime createdAt;
 
+  int get signedQuantity => type.isIn ? quantity : -quantity;
+
+  /// Net change to apply to each affected product.
+  static Map<String, int> stockDeltas({
+    StockTransaction? previous,
+    StockTransaction? next,
+  }) {
+    final deltas = <String, int>{
+      if (previous != null) previous.productId: -previous.signedQuantity,
+    };
+    if (next != null) {
+      deltas.update(
+        next.productId,
+        (delta) => delta + next.signedQuantity,
+        ifAbsent: () => next.signedQuantity,
+      );
+    }
+    return deltas;
+  }
+
   StockTransaction copyWith({
     String? id,
     String? productId,
@@ -32,6 +52,7 @@ class StockTransaction {
     int? quantity,
     DateTime? date,
     String? notes,
+    bool clearNotes = false,
     DateTime? createdAt,
   }) {
     return StockTransaction(
@@ -42,7 +63,7 @@ class StockTransaction {
       type: type ?? this.type,
       quantity: quantity ?? this.quantity,
       date: date ?? this.date,
-      notes: notes ?? this.notes,
+      notes: clearNotes ? null : notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
     );
   }

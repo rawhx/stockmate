@@ -9,6 +9,8 @@ import 'package:stockmate/features/products/domain/repositories/product_reposito
 import 'package:stockmate/features/auth/domain/entities/auth_user.dart';
 import 'package:stockmate/features/auth/domain/entities/sign_up_result.dart';
 import 'package:stockmate/features/auth/domain/errors/auth_failure.dart';
+import 'package:stockmate/features/categories/data/datasources/category_supabase_datasource.dart';
+import 'package:stockmate/features/categories/data/repositories/category_repository_impl.dart';
 
 import 'package:stockmate/features/suppliers/data/datasources/suppliers_local_data_source.dart';
 import 'package:stockmate/features/suppliers/data/repositories/suppliers_repository_impl.dart';
@@ -31,6 +33,9 @@ void main() {
     await tester.pumpWidget(
       AppProviders(
         authRepository: repository,
+        categoryRepository: CategoryRepositoryImpl(
+          const CategorySupabaseDataSource(),
+        ),
         productRepository:
             products ?? ProductRepositoryImpl(ProductMockDataSource()),
         suppliersRepository: SuppliersRepositoryImpl(
@@ -134,6 +139,30 @@ void main() {
     expect(find.byTooltip('Buka Categories'), findsOneWidget);
     expect(find.byTooltip('Sign out'), findsOneWidget);
   });
+
+  for (final edit in [false, true]) {
+    testWidgets(
+      'category link loads without opening the category list (edit: $edit)',
+      (tester) async {
+        final repository = FakeAuthRepository(
+          currentUser: const AuthUser(id: 'user-id', email: 'user@example.com'),
+        );
+        addTearDown(repository.dispose);
+        await pumpApp(tester, repository);
+        final router = GoRouter.of(tester.element(find.text('Products')));
+        router.go(edit ? '/categories/cat-1/edit' : '/categories/cat-1');
+        await tester.pumpAndSettle();
+
+        expect(find.text('Kategori tidak ditemukan.'), findsNothing);
+        if (edit) {
+          expect(find.widgetWithText(TextFormField, 'ATK'), findsOneWidget);
+        } else {
+          expect(find.text('Detail Kategori'), findsOneWidget);
+          expect(find.text('ATK'), findsOneWidget);
+        }
+      },
+    );
+  }
 
   testWidgets(
     'stock transactions action opens stock transactions and returns to products',

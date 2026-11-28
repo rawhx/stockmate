@@ -114,4 +114,27 @@ class ProductMockDataSource implements ProductDataSource {
 
     _products.removeWhere((product) => product.id == id);
   }
+
+  @override
+  Future<Set<String>> changeCategory(
+    Set<String> productIds,
+    String categoryId,
+  ) async {
+    if (productIds.isEmpty) return {};
+    final options = await getFormOptions();
+    final category = options.categories
+        .where((category) => category.id == categoryId)
+        .firstOrNull;
+    if (category == null) throw StateError('Category not found.');
+    final updated = <String>{};
+    for (var index = 0; index < _products.length; index++) {
+      final product = _products[index];
+      if (!productIds.contains(product.id)) continue;
+      _products[index] = ProductModel.fromEntity(
+        product.copyWith(categoryId: category.id, categoryName: category.name),
+      );
+      updated.add(product.id);
+    }
+    return updated;
+  }
 }

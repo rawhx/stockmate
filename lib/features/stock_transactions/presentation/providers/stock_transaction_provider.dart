@@ -37,6 +37,7 @@ class StockTransactionProvider extends ChangeNotifier {
 
   List<StockTransaction> _transactions = [];
   bool _isLoading = false;
+  bool _isSaving = false;
   String? _errorMessage;
   TransactionFilter _currentFilter = TransactionFilter.all;
   String _searchQuery = '';
@@ -54,7 +55,7 @@ class StockTransactionProvider extends ChangeNotifier {
   }
 
   List<StockTransaction> get transactions => List.unmodifiable(_transactions);
-  bool get isLoading => _isLoading;
+  bool get isLoading => _isLoading || _isSaving;
   String? get errorMessage => _errorMessage;
   TransactionFilter get currentFilter => _currentFilter;
   String get searchQuery => _searchQuery;
@@ -106,6 +107,7 @@ class StockTransactionProvider extends ChangeNotifier {
     _errorMessage = null;
     _pendingFetch = null;
     _isLoading = false;
+    _isSaving = false;
     notifyListeners();
   }
 
@@ -138,145 +140,134 @@ class StockTransactionProvider extends ChangeNotifier {
   }
 
   Future<StockTransaction?> getTransactionById(String id) async {
+    final generation = _generation;
+    _errorMessage = null;
     try {
-      return await getStockTransaction(id);
+      final transaction = await getStockTransaction(id);
+      return !_disposed && generation == _generation ? transaction : null;
     } catch (e) {
-      _errorMessage = e.toString().replaceFirst('StateError: ', '');
-      notifyListeners();
+      if (!_disposed && generation == _generation) {
+        _errorMessage = e is StateError ? e.message : e.toString();
+        notifyListeners();
+      }
       return null;
     }
   }
 
-  Future<bool> addTransaction(StockTransaction transaction) async {
-    _setLoading(true);
-    try {
-      if (onGetProduct != null) {
-        final product = await onGetProduct!(transaction.productId);
-        if (product != null) {
-          if (transaction.type == TransactionType.outStock &&
-              product.currentStock < transaction.quantity) {
-            throw StateError(
-              'Stok tidak mencukupi (Tersedia: ${product.currentStock}, Diminta: ${transaction.quantity})',
-            );
-          }
+  Future<bool> addTransaction(StockTransaction transaction) => _mutate(
+    next: transaction,
+    write: (_, next) => createStockTransaction(next!),
+  );
 
-          if (onUpdateProduct != null) {
-            final newStock = transaction.type == TransactionType.inStock
-                ? product.currentStock + transaction.quantity
-                : product.currentStock - transaction.quantity;
-            await onUpdateProduct!(product.copyWith(currentStock: newStock));
+  Future<bool> editTransaction(StockTransaction updated) => _mutate(
+    previousId: updated.id,
+    next: updated,
+    write: (_, next) => updateStockTransaction(next!),
+  );
+
+  Future<bool> removeTransaction(String id) => _mutate(
+    previousId: id,
+    write: (previous, _) => deleteStockTransaction(previous!.id),
+  );
+
+  Future<bool> _mutate({
+    String? previousId,
+    StockTransaction? next,
+    required Future<void> Function(StockTransaction?, StockTransaction?) write,
+  }) async {
+    if (_isSaving || _disposed) return false;
+    final generation = _generation;
+    bool isCurrent() => !_disposed && generation == _generation;
+    final updateProduct = onUpdateProduct;
+    final attempted = <Product>[];
+    var committed = false;
+    _isSaving = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      if (next != null && next.quantity <= 0) {
+        throw StateError('Jumlah transaksi harus lebih dari nol.');
+      }
+
+      final previous = previousId == null
+          ? null
+          : await getStockTransaction(previousId);
+      if (!isCurrent()) return false;
+      if (previousId != null && previous == null) {
+        throw StateError('Transaksi tidak ditemukan.');
+      }
+
+      final products = await _collectStockChanges(previous, next);
+      if (!isCurrent()) return false;
+      if (updateProduct != null) {
+        for (final (original, updated) in products) {
+          attempted.add(original);
+          if (!await updateProduct(updated)) {
+            throw StateError('Gagal memperbarui stok ${original.name}.');
+          }
+          if (!isCurrent()) return false;
+        }
+      }
+      await write(previous, next);
+      committed = true;
+      if (!isCurrent()) return false;
+
+      final pending = _pendingFetch;
+      if (pending != null) await pending;
+      if (!isCurrent()) return false;
+      await onRefreshProducts?.call();
+      if (!isCurrent()) return false;
+      await fetchTransactions();
+      return isCurrent();
+    } catch (error) {
+      if (!isCurrent()) return false;
+      final message = error is StateError ? error.message : error.toString();
+      var rollbackFailed = false;
+      if (!committed && updateProduct != null) {
+        for (final product in attempted.reversed) {
+          if (!isCurrent()) return false;
+          try {
+            if (!await updateProduct(product)) rollbackFailed = true;
+          } catch (_) {
+            rollbackFailed = true;
           }
         }
       }
-
-      await createStockTransaction(transaction);
-      if (onRefreshProducts != null) {
-        await onRefreshProducts!();
+      if (!isCurrent()) return false;
+      _errorMessage = rollbackFailed
+          ? '$message Pemulihan stok gagal.'
+          : message;
+      return committed;
+    } finally {
+      if (isCurrent()) {
+        _isSaving = false;
+        notifyListeners();
       }
-      await fetchTransactions();
-      _errorMessage = null;
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString().replaceFirst('StateError: ', '');
-      _setLoading(false);
-      return false;
     }
   }
 
-  Future<bool> editTransaction(StockTransaction updated) async {
-    _setLoading(true);
-    try {
-      final old = await getStockTransaction(updated.id);
-      if (old == null) {
-        throw StateError('Transaksi lama tidak ditemukan.');
+  Future<List<(Product, Product)>> _collectStockChanges(
+    StockTransaction? previous,
+    StockTransaction? next,
+  ) async {
+    final getProduct = onGetProduct;
+    if (getProduct == null) return [];
+    final changes = <(Product, Product)>[];
+    final deltas = StockTransaction.stockDeltas(previous: previous, next: next);
+    for (final entry in deltas.entries) {
+      final product = await getProduct(entry.key);
+      if (product == null) {
+        throw StateError('Produk transaksi tidak ditemukan.');
       }
-
-      if (onGetProduct != null) {
-        final product = await onGetProduct!(updated.productId);
-        if (product != null) {
-          var simulatedStock = product.currentStock;
-          if (old.type == TransactionType.inStock) {
-            simulatedStock -= old.quantity;
-          } else {
-            simulatedStock += old.quantity;
-          }
-
-          if (updated.type == TransactionType.outStock &&
-              simulatedStock < updated.quantity) {
-            throw StateError(
-              'Stok tidak mencukupi untuk pembaruan transaksi (Stok efektif: $simulatedStock, Diminta: ${updated.quantity})',
-            );
-          }
-
-          final finalStock = updated.type == TransactionType.inStock
-              ? simulatedStock + updated.quantity
-              : simulatedStock - updated.quantity;
-
-          if (finalStock < 0) {
-            throw StateError(
-              'Pembaruan transaksi menyebabkan stok menjadi negatif.',
-            );
-          }
-
-          if (onUpdateProduct != null) {
-            await onUpdateProduct!(product.copyWith(currentStock: finalStock));
-          }
-        }
+      final balance = product.currentStock + entry.value;
+      if (entry.value < 0 && balance < 0) {
+        throw StateError('Stok tidak mencukupi untuk ${product.name}.');
       }
-
-      await updateStockTransaction(updated);
-      if (onRefreshProducts != null) {
-        await onRefreshProducts!();
+      if (entry.value != 0) {
+        changes.add((product, product.copyWith(currentStock: balance)));
       }
-      await fetchTransactions();
-      _errorMessage = null;
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString().replaceFirst('StateError: ', '');
-      _setLoading(false);
-      return false;
     }
-  }
-
-  Future<bool> removeTransaction(String id) async {
-    _setLoading(true);
-    try {
-      final existing = await getStockTransaction(id);
-      if (existing == null) {
-        throw StateError('Transaksi tidak ditemukan');
-      }
-
-      if (onGetProduct != null) {
-        final product = await onGetProduct!(existing.productId);
-        if (product != null) {
-          final newStock = existing.type == TransactionType.inStock
-              ? product.currentStock - existing.quantity
-              : product.currentStock + existing.quantity;
-
-          if (newStock < 0) {
-            throw StateError(
-              'Tidak dapat menghapus transaksi masuk ini karena stok barang sudah terpakai dan akan bernilai negatif ($newStock).',
-            );
-          }
-
-          if (onUpdateProduct != null) {
-            await onUpdateProduct!(product.copyWith(currentStock: newStock));
-          }
-        }
-      }
-
-      await deleteStockTransaction(id);
-      if (onRefreshProducts != null) {
-        await onRefreshProducts!();
-      }
-      await fetchTransactions();
-      _errorMessage = null;
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString().replaceFirst('StateError: ', '');
-      _setLoading(false);
-      return false;
-    }
+    return changes;
   }
 
   void _setLoading(bool value) {

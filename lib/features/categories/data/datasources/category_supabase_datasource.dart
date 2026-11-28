@@ -72,6 +72,25 @@ class CategorySupabaseDataSource {
     return CategoryModel.fromMap(row);
   }
 
+  Future<CategoryModel?> getCategory(String id) async {
+    final client = this.client;
+    if (client == null) {
+      final categories = await getCategories();
+      return categories.where((category) => category.id == id).firstOrNull;
+    }
+    final ownerId = _currentUserId;
+    final row = await client
+        .from('categories')
+        .select()
+        .eq('owner_id', ownerId)
+        .eq('id', id)
+        .maybeSingle();
+    if (_currentUserId != ownerId) {
+      throw StateError('Akun telah berubah. Silakan muat ulang kategori.');
+    }
+    return row == null ? null : CategoryModel.fromMap(row);
+  }
+
   Future<CategoryModel> updateCategory(CategoryModel category) async {
     final client = this.client;
     if (client == null) {

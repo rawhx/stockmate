@@ -13,6 +13,9 @@ class CategoryRepositoryImpl implements CategoryRepository {
     return dataSource.getCategories();
   }
 
+  @override
+  Future<CategoryEntity?> getCategory(String id) => dataSource.getCategory(id);
+
   CategoryModel _toModel(CategoryEntity category) {
     return CategoryModel(
       id: category.id,
