@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../pages/category_list_page.dart';
 import '../pages/category_detail_page.dart';
 import '../pages/category_form_page.dart';
+import '../widgets/category_route_loader.dart';
 
 
 final List<RouteBase> categoryRoutes = [
@@ -57,10 +58,15 @@ final List<RouteBase> categoryRoutes = [
     builder: (context, state) {
       final id = state.pathParameters['id']!;
 
-      return CategoryFormPage(
-          categoryId: id,
+      return CategoryRouteLoader(
+        key: ValueKey(id),
+        categoryId: id,
+        onBack: () => _closeCategoryForm(context, null),
+        builder: (category) => CategoryFormPage(
+          category: category,
           onSaved: () => _closeCategoryForm(context, id),
           onCancel: () => _closeCategoryForm(context, id),
+        ),
       );
     },
   ),

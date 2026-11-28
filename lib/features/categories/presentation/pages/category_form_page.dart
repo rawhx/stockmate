@@ -8,14 +8,14 @@ import '../widgets/category_form_fields.dart';
 import '../widgets/category_form_header.dart';
 
 class CategoryFormPage extends StatefulWidget {
-  final String? categoryId;
+  final CategoryEntity? category;
   final String? parentId;
   final VoidCallback onSaved;
   final VoidCallback onCancel;
 
   const CategoryFormPage({
     super.key,
-    this.categoryId,
+    this.category,
     this.parentId,
     required this.onSaved,
     required this.onCancel,
@@ -32,31 +32,20 @@ class _CategoryFormPageState extends State<CategoryFormPage> {
 
   String? _parentId;
   CategoryEntity? _originalCategory;
-  bool _initialized = false;
+
   bool _isSaving = false;
 
-  bool get isEditMode => widget.categoryId != null;
+  bool get isEditMode => widget.category != null;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    if (_initialized) return;
-    _initialized = true;
-    _parentId = widget.parentId;
-
-    if (isEditMode) {
-      final categories = context.read<CategoryProvider>().categories;
-
-      for (final category in categories) {
-        if (category.id == widget.categoryId) {
-          _originalCategory = category;
-          _nameController.text = category.name;
-          _descriptionController.text = category.description ?? '';
-          _parentId = category.parentId;
-          break;
-        }
-      }
+  void initState() {
+    super.initState();
+    final category = widget.category;
+    _parentId = category?.parentId ?? widget.parentId;
+    _originalCategory = category;
+    if (category != null) {
+      _nameController.text = category.name;
+      _descriptionController.text = category.description ?? '';
     }
   }
 
@@ -130,13 +119,6 @@ class _CategoryFormPageState extends State<CategoryFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (isEditMode && _originalCategory == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Edit Kategori')),
-        body: const Center(child: Text('Kategori tidak ditemukan')),
-      );
-    }
-
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -168,7 +150,7 @@ class _CategoryFormPageState extends State<CategoryFormPage> {
                         nameController: _nameController,
                         descriptionController: _descriptionController,
                         existingCategories: categories,
-                        currentCategoryId: widget.categoryId,
+                        currentCategoryId: _originalCategory?.id,
                       ),
                       const SizedBox(height: 16),
                       CategoryFormActions(
