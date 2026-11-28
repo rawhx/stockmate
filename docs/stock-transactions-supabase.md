@@ -32,6 +32,20 @@ Integrasi ini menggunakan skema PostgreSQL pada Supabase:
 
 ## Penanganan Sesi & Pergantian Akun
 
+Migration `20261128000100_validate_stock_balances.sql` menolak transaksi
+yang mengurangi saldo produk hingga negatif. Trigger mengunci produk
+yang terdampak sebelum membaca saldo terbaru. Saat produk transaksi
+dipindah, saldo produk asal dan tujuan diperiksa dalam transaksi database
+yang sama. Terapkan migration pada Supabase sebelum mengandalkan perlindungan
+ini di lingkungan live.
+
+Pengujian `supabase/tests/stock_balance_guard.sql` bisa dijalankan pada database
+uji yang sudah memiliki skema StockMate. Test mencakup penolakan pindah atau
+hapus transaksi saat saldo tidak cukup, perpindahan yang sah, dan pengosongan
+catatan. Semua data uji di-rollback.
+
+## Cache sesi
+
 - `StockTransactionProvider.setOwner(ownerId)` mendeteksi perubahan akun dari `AuthProvider`.
 - Saat user logout atau login dengan akun baru, riwayat transaksi akun sebelumnya langsung dibersihkan dan riwayat transaksi milik akun baru dimuat secara otomatis.
 
