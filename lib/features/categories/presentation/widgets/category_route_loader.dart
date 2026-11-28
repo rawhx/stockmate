@@ -33,11 +33,11 @@ class _CategoryRouteLoaderState extends State<CategoryRouteLoader> {
 
   Future<CategoryEntity?> _load() async {
     final provider = context.read<CategoryProvider>();
-    final category = await provider.getCategory(widget.categoryId);
-    if (category != null && mounted && widget.loadChildren) {
-      await provider.loadCategories();
+    if (widget.loadChildren) {
+      await Future<void>.microtask(provider.loadCategories);
     }
-    return category;
+    if (!mounted) return null;
+    return provider.getCategory(widget.categoryId);
   }
 
   @override

@@ -11,7 +11,8 @@ import '../providers/category_provider.dart';
 import '../widgets/subcategory_tile.dart';
 
 class CategoryDetailPage extends StatelessWidget {
-  final String categoryId;
+  final CategoryEntity initialCategory;
+  String get categoryId => initialCategory.id;
   final VoidCallback onEdit;
   final VoidCallback onBack;
   final VoidCallback onAddSubcategory;
@@ -19,7 +20,7 @@ class CategoryDetailPage extends StatelessWidget {
 
   const CategoryDetailPage({
     super.key,
-    required this.categoryId,
+    required this.initialCategory,
     required this.onEdit,
     required this.onBack,
     required this.onAddSubcategory,
@@ -121,22 +122,7 @@ class CategoryDetailPage extends StatelessWidget {
       }
     }
 
-    final selectedCategory = category;
-    if (selectedCategory == null) {
-      return Scaffold(
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            tooltip: 'Kembali ke Daftar Kategori',
-            onPressed: onBack,
-          ),
-          title: const Text('Detail Kategori'),
-        ),
-
-        body: const Center(child: Text('Kategori tidak ditemukan')),
-      );
-    }
+    final selectedCategory = category ?? initialCategory;
 
     final subcategories = provider.categories
         .where((item) => item.parentId == categoryId)

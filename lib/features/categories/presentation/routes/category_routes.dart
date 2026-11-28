@@ -36,19 +36,21 @@ final List<RouteBase> categoryRoutes = [
     builder: (context, state) {
       final id = state.pathParameters['id']!;
 
-      return CategoryDetailPage(
-          categoryId: id,
+      void goBack() => _closeCategoryForm(context, null);
+
+      return CategoryRouteLoader(
+        key: ValueKey(id),
+        categoryId: id,
+        loadChildren: true,
+        onBack: goBack,
+        builder: (category) => CategoryDetailPage(
+          initialCategory: category,
           onAddSubcategory: () => context.push('/categories/new?parentId=$id'),
           onEdit: () => context.push('/categories/$id/edit'),
-          onBack: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/categories');
-            }
-          },
+          onBack: goBack,
           onOpenSubcategory: (subcategoryId) =>
               context.push('/categories/$subcategoryId'),
+        ),
       );
     },
   ),
