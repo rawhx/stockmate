@@ -138,11 +138,16 @@ class StockTransactionProvider extends ChangeNotifier {
   }
 
   Future<StockTransaction?> getTransactionById(String id) async {
+    final generation = _generation;
+    _errorMessage = null;
     try {
-      return await getStockTransaction(id);
+      final transaction = await getStockTransaction(id);
+      return !_disposed && generation == _generation ? transaction : null;
     } catch (e) {
-      _errorMessage = e.toString().replaceFirst('StateError: ', '');
-      notifyListeners();
+      if (!_disposed && generation == _generation) {
+        _errorMessage = e is StateError ? e.message : e.toString();
+        notifyListeners();
+      }
       return null;
     }
   }
