@@ -30,7 +30,7 @@ Integrasi ini menggunakan skema PostgreSQL pada Supabase:
   $$\text{current\_stock} = \sum(\text{IN}) - \sum(\text{OUT})$$
 - Ketika transaksi stok dicatat, diubah, atau dihapus melalui `StockTransactionProvider`, callback `onRefreshProducts` secara otomatis memanggil `ProductProvider.fetchProducts()` sehingga tampilan inventaris produk langsung menampilkan stok terkini tanpa perlu reload manual.
 
-## Penanganan Sesi & Pergantian Akun
+## Validasi Saldo di Database
 
 Migration `20261128000100_validate_stock_balances.sql` menolak transaksi
 yang mengurangi saldo produk hingga negatif. Trigger mengunci produk
@@ -44,7 +44,7 @@ uji yang sudah memiliki skema StockMate. Test mencakup penolakan pindah atau
 hapus transaksi saat saldo tidak cukup, perpindahan yang sah, dan pengosongan
 catatan. Semua data uji di-rollback.
 
-## Cache sesi
+## Penanganan Sesi & Pergantian Akun
 
 - `StockTransactionProvider.setOwner(ownerId)` mendeteksi perubahan akun dari `AuthProvider`.
 - Saat user logout atau login dengan akun baru, riwayat transaksi akun sebelumnya langsung dibersihkan dan riwayat transaksi milik akun baru dimuat secara otomatis.

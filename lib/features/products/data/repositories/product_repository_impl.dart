@@ -38,6 +38,8 @@ class ProductRepositoryImpl implements ProductRepository {
   }
 
   @override
-  Future<Set<String>> changeCategory(Set<String> productIds, String categoryId) =>
-      dataSource.changeCategory(productIds, categoryId);
+  Future<Set<String>> changeCategory(
+    Set<String> productIds,
+    String categoryId,
+  ) => dataSource.changeCategory(productIds, categoryId);
 }

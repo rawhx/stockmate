@@ -148,7 +148,9 @@ class _StockTransactionFormPageState extends State<StockTransactionFormPage> {
     final previousQuantity = previous?.productId == selected.id
         ? previous!.signedQuantity
         : 0;
-    final nextQuantity = _selectedType.isIn ? _enteredQuantity : -_enteredQuantity;
+    final nextQuantity = _selectedType.isIn
+        ? _enteredQuantity
+        : -_enteredQuantity;
     return selected.currentStock - previousQuantity + nextQuantity;
   }
 

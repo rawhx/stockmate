@@ -21,46 +21,51 @@ class _CategoryRepository implements CategoryRepository {
   Future<CategoryEntity?> getCategory(String id) => detail.future;
 
   @override
-  Future<void> addCategory(CategoryEntity category) => throw UnimplementedError();
+  Future<void> addCategory(CategoryEntity category) =>
+      throw UnimplementedError();
 
   @override
-  Future<void> updateCategory(CategoryEntity category) => throw UnimplementedError();
+  Future<void> updateCategory(CategoryEntity category) =>
+      throw UnimplementedError();
 
   @override
   Future<void> deleteCategory(String id) => throw UnimplementedError();
 }
 
 void main() {
-  test('pending reads from a previous account cannot repopulate its category data', () async {
-    final repository = _CategoryRepository();
-    final provider = CategoryProvider(
-      getCategories: GetCategories(repository),
-      getCategoryById: GetCategoryById(repository),
-      addCategory: AddCategory(repository),
-      updateCategory: UpdateCategory(repository),
-      deleteCategory: DeleteCategory(repository),
-    );
-    addTearDown(provider.dispose);
-    final previous = CategoryEntity(
-      id: 'a-category',
-      ownerId: 'a',
-      name: 'Private inventory',
-      createdAt: DateTime.utc(2026),
-      updatedAt: DateTime.utc(2026),
-    );
+  test(
+    'pending reads from a previous account cannot repopulate its category data',
+    () async {
+      final repository = _CategoryRepository();
+      final provider = CategoryProvider(
+        getCategories: GetCategories(repository),
+        getCategoryById: GetCategoryById(repository),
+        addCategory: AddCategory(repository),
+        updateCategory: UpdateCategory(repository),
+        deleteCategory: DeleteCategory(repository),
+      );
+      addTearDown(provider.dispose);
+      final previous = CategoryEntity(
+        id: 'a-category',
+        ownerId: 'a',
+        name: 'Private inventory',
+        createdAt: DateTime.utc(2026),
+        updatedAt: DateTime.utc(2026),
+      );
 
-    provider.setOwner('a');
-    provider.setSearchQuery(previous.name);
-    final list = provider.loadCategories();
-    final detail = provider.getCategory(previous.id);
-    provider.setOwner('b');
-    repository.list.complete([previous]);
-    repository.detail.complete(previous);
+      provider.setOwner('a');
+      provider.setSearchQuery(previous.name);
+      final list = provider.loadCategories();
+      final detail = provider.getCategory(previous.id);
+      provider.setOwner('b');
+      repository.list.complete([previous]);
+      repository.detail.complete(previous);
 
-    await list;
-    expect(await detail, isNull);
-    expect(provider.categories, isEmpty);
-    expect(provider.searchQuery, isEmpty);
-    expect(provider.isLoading, isFalse);
-  });
+      await list;
+      expect(await detail, isNull);
+      expect(provider.categories, isEmpty);
+      expect(provider.searchQuery, isEmpty);
+      expect(provider.isLoading, isFalse);
+    },
+  );
 }

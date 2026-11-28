@@ -129,7 +129,8 @@ class AppProviders extends StatelessWidget {
           },
         ),
         Provider<CategoryRepository>(
-          create: (_) => categoryRepository ??
+          create: (_) =>
+              categoryRepository ??
               CategoryRepositoryImpl(
                 CategorySupabaseDataSource(Supabase.instance.client),
               ),
@@ -166,9 +167,7 @@ class AppProviders extends StatelessWidget {
               (previous ?? _createSuppliersProvider(context))
                 ..setOwner(auth.user?.id),
         ),
-        Provider<StockTransactionRepository>.value(
-          value: resolvedStockRepo,
-        ),
+        Provider<StockTransactionRepository>.value(value: resolvedStockRepo),
         ChangeNotifierProxyProvider2<
           AuthProvider,
           ProductProvider,
@@ -199,8 +198,8 @@ class AppProviders extends StatelessWidget {
             if (currentStockTxProvider != null) {
               currentStockTxProvider.onGetProduct =
                   isMockStockWithRemoteProducts
-                      ? blockMockStockMutation
-                      : productProvider.getProductById;
+                  ? blockMockStockMutation
+                  : productProvider.getProductById;
               currentStockTxProvider.onUpdateProduct = usesRemoteProducts
                   ? null
                   : productProvider.editProduct;

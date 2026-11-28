@@ -56,10 +56,7 @@ void main() {
       'date': '2026-11-25T11:00:00.000Z',
       'notes': 'Penjualan retail',
       'created_at': '2026-11-25T11:00:00.000Z',
-      'products': {
-        'name': 'Beras Premium',
-        'code': 'PRD-001',
-      },
+      'products': {'name': 'Beras Premium', 'code': 'PRD-001'},
     };
 
     final model = StockTransactionModel.fromJson(json);

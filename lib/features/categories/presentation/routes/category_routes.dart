@@ -1,19 +1,19 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
+
 import '../pages/category_list_page.dart';
 import '../pages/category_detail_page.dart';
 import '../pages/category_form_page.dart';
 import '../widgets/category_route_loader.dart';
-
 
 final List<RouteBase> categoryRoutes = [
   GoRoute(
     path: '/categories',
     builder: (context, state) {
       return CategoryListPage(
-          onOpenDetail: (id) => context.push('/categories/$id'),
-          onEditCategory: (id) => context.push('/categories/$id/edit'),
-          onAddCategory: () => context.push('/categories/new'),
+        onOpenDetail: (id) => context.push('/categories/$id'),
+        onEditCategory: (id) => context.push('/categories/$id/edit'),
+        onAddCategory: () => context.push('/categories/new'),
       );
     },
   ),
@@ -24,9 +24,9 @@ final List<RouteBase> categoryRoutes = [
       final parentId = state.uri.queryParameters['parentId'];
 
       return CategoryFormPage(
-          parentId: parentId,
-          onSaved: () => _closeCategoryForm(context, parentId),
-          onCancel: () => _closeCategoryForm(context, parentId),
+        parentId: parentId,
+        onSaved: () => _closeCategoryForm(context, parentId),
+        onCancel: () => _closeCategoryForm(context, parentId),
       );
     },
   ),

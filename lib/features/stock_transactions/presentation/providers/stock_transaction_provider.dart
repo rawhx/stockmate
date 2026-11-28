@@ -234,7 +234,9 @@ class StockTransactionProvider extends ChangeNotifier {
         }
       }
       if (!isCurrent()) return false;
-      _errorMessage = rollbackFailed ? '$message Pemulihan stok gagal.' : message;
+      _errorMessage = rollbackFailed
+          ? '$message Pemulihan stok gagal.'
+          : message;
       return committed;
     } finally {
       if (isCurrent()) {
@@ -254,7 +256,9 @@ class StockTransactionProvider extends ChangeNotifier {
     final deltas = StockTransaction.stockDeltas(previous: previous, next: next);
     for (final entry in deltas.entries) {
       final product = await getProduct(entry.key);
-      if (product == null) throw StateError('Produk transaksi tidak ditemukan.');
+      if (product == null) {
+        throw StateError('Produk transaksi tidak ditemukan.');
+      }
       final balance = product.currentStock + entry.value;
       if (entry.value < 0 && balance < 0) {
         throw StateError('Stok tidak mencukupi untuk ${product.name}.');

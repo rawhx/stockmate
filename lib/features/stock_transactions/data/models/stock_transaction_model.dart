@@ -34,11 +34,13 @@ class StockTransactionModel extends StockTransaction {
     String? productCode,
   }) {
     final productData = json['products'] as Map<String, dynamic>?;
-    final resolvedName = productName ??
+    final resolvedName =
+        productName ??
         productData?['name'] as String? ??
         json['product_name'] as String? ??
         '';
-    final resolvedCode = productCode ??
+    final resolvedCode =
+        productCode ??
         productData?['code'] as String? ??
         json['product_code'] as String? ??
         '';

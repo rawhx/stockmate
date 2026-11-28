@@ -10,6 +10,8 @@ class UpdateProduct {
     return repository.updateProduct(product);
   }
 
-  Future<Set<String>> changeCategory(Set<String> productIds, String categoryId) =>
-      repository.changeCategory(productIds, categoryId);
+  Future<Set<String>> changeCategory(
+    Set<String> productIds,
+    String categoryId,
+  ) => repository.changeCategory(productIds, categoryId);
 }

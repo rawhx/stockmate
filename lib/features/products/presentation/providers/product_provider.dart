@@ -154,6 +154,7 @@ class ProductProvider extends ChangeNotifier {
     });
     return success ? moved.length : 0;
   }
+
   Future<bool> removeProduct(String id) {
     final generation = _generation;
     return _mutate(() async {

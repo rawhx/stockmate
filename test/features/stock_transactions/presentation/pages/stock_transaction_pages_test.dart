@@ -64,24 +64,23 @@ void main() {
     );
   }
 
-  testWidgets(
-    'an unavailable edit shows retry instead of a create form',
-    (tester) async {
-      final before = await txDataSource.getTransactions();
-      await tester.pumpWidget(
-        buildTestableWidget(
-          const StockTransactionFormPage(transactionId: 'missing'),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('Transaksi tidak ditemukan.'), findsOneWidget);
-      expect(find.byType(Form), findsNothing);
-      await tester.tap(find.text('Coba lagi'));
-      await tester.pumpAndSettle();
-      expect(find.text('Transaksi tidak ditemukan.'), findsOneWidget);
-      expect(await txDataSource.getTransactions(), hasLength(before.length));
-    },
-  );
+  testWidgets('an unavailable edit shows retry instead of a create form', (
+    tester,
+  ) async {
+    final before = await txDataSource.getTransactions();
+    await tester.pumpWidget(
+      buildTestableWidget(
+        const StockTransactionFormPage(transactionId: 'missing'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Transaksi tidak ditemukan.'), findsOneWidget);
+    expect(find.byType(Form), findsNothing);
+    await tester.tap(find.text('Coba lagi'));
+    await tester.pumpAndSettle();
+    expect(find.text('Transaksi tidak ditemukan.'), findsOneWidget);
+    expect(await txDataSource.getTransactions(), hasLength(before.length));
+  });
 
   testWidgets(
     'StockTransactionListPage renders title, FAB, and transaction cards',
