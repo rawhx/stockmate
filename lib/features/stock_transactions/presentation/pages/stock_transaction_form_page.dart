@@ -142,28 +142,14 @@ class _StockTransactionFormPageState extends State<StockTransactionFormPage> {
   }
 
   int? get _simulatedNewStock {
-    if (_selectedProduct == null) return null;
-    final current = _selectedProduct!.currentStock;
-    final qty = _enteredQuantity;
-
-    if (!widget.isEditing) {
-      return _selectedType == TransactionType.inStock
-          ? current + qty
-          : current - qty;
-    }
-
-    // Mode Edit: hitung balik transaksi lama
-    if (_existingTransaction == null) return null;
-    var baseStock = current;
-    if (_existingTransaction!.type == TransactionType.inStock) {
-      baseStock -= _existingTransaction!.quantity;
-    } else {
-      baseStock += _existingTransaction!.quantity;
-    }
-
-    return _selectedType == TransactionType.inStock
-        ? baseStock + qty
-        : baseStock - qty;
+    final selected = _selectedProduct;
+    if (selected == null) return null;
+    final previous = _existingTransaction;
+    final previousQuantity = previous?.productId == selected.id
+        ? previous!.signedQuantity
+        : 0;
+    final nextQuantity = _selectedType.isIn ? _enteredQuantity : -_enteredQuantity;
+    return selected.currentStock - previousQuantity + nextQuantity;
   }
 
   bool get _isStockExceeded {
@@ -178,18 +164,6 @@ class _StockTransactionFormPageState extends State<StockTransactionFormPage> {
     if (_selectedProduct == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Silakan pilih barang terlebih dahulu.')),
-      );
-      return;
-    }
-
-    if (_isStockExceeded) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Transaksi keluar tidak dapat disimpan karena melebihi stok yang tersedia!',
-          ),
-          backgroundColor: Color(0xFFC62828),
-        ),
       );
       return;
     }
