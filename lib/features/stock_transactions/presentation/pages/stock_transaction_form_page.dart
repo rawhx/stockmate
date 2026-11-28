@@ -30,7 +30,8 @@ class _StockTransactionFormPageState extends State<StockTransactionFormPage> {
   DateTime _selectedDate = DateTime.now();
 
   bool _isInit = true;
-  bool _isLoading = false;
+  bool _isLoading = true;
+  String? _loadError;
   StockTransaction? _existingTransaction;
 
   @override
@@ -50,6 +51,11 @@ class _StockTransactionFormPageState extends State<StockTransactionFormPage> {
   }
 
   Future<void> _initializeFormData() async {
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+      _existingTransaction = null;
+    });
     final productProvider = context.read<ProductProvider>();
     final txProvider = context.read<StockTransactionProvider>();
 
@@ -59,12 +65,18 @@ class _StockTransactionFormPageState extends State<StockTransactionFormPage> {
     if (!mounted) return;
 
     if (widget.isEditing) {
-      setState(() => _isLoading = true);
       final tx = await txProvider.getTransactionById(widget.transactionId!);
       if (!mounted) return;
+      if (tx == null) {
+        setState(() {
+          _loadError = txProvider.errorMessage ?? 'Transaksi tidak ditemukan.';
+          _isLoading = false;
+        });
+        return;
+      }
       _existingTransaction = tx;
 
-      if (tx != null) {
+      {
         _selectedType = tx.type;
         _quantityController.text = tx.quantity.toString();
         _notesController.text = tx.notes ?? '';
@@ -90,11 +102,10 @@ class _StockTransactionFormPageState extends State<StockTransactionFormPage> {
       setState(() => _isLoading = false);
     } else {
       final products = productProvider.products;
-      if (products.isNotEmpty && _selectedProduct == null) {
-        setState(() {
-          _selectedProduct = products.first;
-        });
-      }
+      setState(() {
+        _selectedProduct ??= products.firstOrNull;
+        _isLoading = false;
+      });
     }
   }
 
@@ -274,6 +285,26 @@ class _StockTransactionFormPageState extends State<StockTransactionFormPage> {
       body: SafeArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
+            : _loadError != null
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(_loadError!, textAlign: TextAlign.center),
+                      TextButton(
+                        onPressed: _initializeFormData,
+                        child: const Text('Coba lagi'),
+                      ),
+                      TextButton(
+                        onPressed: () => context.go('/stock-transactions'),
+                        child: const Text('Kembali'),
+                      ),
+                    ],
+                  ),
+                ),
+              )
             : SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Center(
