@@ -127,6 +127,33 @@ class ProductProvider extends ChangeNotifier {
       _mutate(() => _createProduct(product));
   Future<bool> editProduct(Product product) =>
       _mutate(() => _updateProduct(product));
+
+  Future<int> changeProductCategory(
+    Set<String> productIds,
+    String categoryId,
+  ) async {
+    if (productIds.isEmpty) return 0;
+    final generation = _generation;
+    final ids = productIds.toList();
+    const batchSize = 100;
+    final moved = <String>{};
+    String? failure;
+    final success = await _mutate(() async {
+      for (var offset = 0; offset < ids.length; offset += batchSize) {
+        if (!_isCurrent(generation)) return;
+        try {
+          final batch = ids.skip(offset).take(batchSize).toSet();
+          moved.addAll(await _updateProduct.changeCategory(batch, categoryId));
+        } catch (error) {
+          // Preserve results from batches that committed before a failure.
+          failure = _message(error);
+          break;
+        }
+      }
+      if (moved.isEmpty && failure != null) throw StateError(failure!);
+    });
+    return success ? moved.length : 0;
+  }
   Future<bool> removeProduct(String id) {
     final generation = _generation;
     return _mutate(() async {
