@@ -29,18 +29,16 @@ class _StockTransactionFormPageState extends State<StockTransactionFormPage> {
   final TextEditingController _notesController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
 
-  bool _isInit = true;
   bool _isLoading = true;
   String? _loadError;
   StockTransaction? _existingTransaction;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_isInit) {
-      _isInit = false;
-      _initializeFormData();
-    }
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _initializeFormData();
+    });
   }
 
   @override
