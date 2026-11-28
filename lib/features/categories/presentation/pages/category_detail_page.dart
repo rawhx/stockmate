@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../domain/entities/category_entity.dart';
-import '../../../products/domain/entities/product.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import '../widgets/category_detail_header.dart';
 import '../widgets/category_product_picker_dialog.dart';
@@ -37,35 +36,30 @@ class CategoryDetailPage extends StatelessWidget {
 
     if (!context.mounted) return;
 
-    final selectedProducts = await showDialog<List<Product>>(
+    final selectedIds = await showDialog<Set<String>>(
       context: context,
       builder: (_) =>
           CategoryProductPickerDialog(categoryName: targetCategoryName),
     );
 
-    if (selectedProducts == null ||
-        selectedProducts.isEmpty ||
-        !context.mounted) {
+    if (selectedIds == null || selectedIds.isEmpty || !context.mounted) {
       return;
     }
 
-    var success = true;
-    for (final product in selectedProducts) {
-      final updatedProduct = product.copyWith(
-        categoryId: targetCategoryId,
-        categoryName: targetCategoryName,
-      );
-      success = await productProvider.editProduct(updatedProduct) && success;
-    }
+    final moved = await productProvider.changeProductCategory(
+      selectedIds,
+      targetCategoryId,
+    );
 
     if (!context.mounted) return;
+    final failed = selectedIds.length - moved;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          success
-              ? '${selectedProducts.length} produk berhasil ditambahkan ke kategori'
-              : productProvider.errorMessage ?? 'Gagal menambahkan produk',
+          failed == 0
+              ? '$moved produk berhasil ditambahkan ke kategori'
+              : '$moved produk berhasil, $failed gagal ditambahkan ke kategori.',
         ),
       ),
     );
