@@ -13,5 +13,7 @@ abstract interface class ProductDataSource {
 
   Future<void> updateProduct(ProductModel product);
 
+  Future<Set<String>> changeCategory(Set<String> productIds, String categoryId);
+
   Future<void> deleteProduct(String id);
 }
